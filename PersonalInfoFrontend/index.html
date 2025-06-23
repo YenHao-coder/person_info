@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>個人資料管理系統</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+      crossorigin="anonymous"
+    />
+    <link href="css/style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app" class="container mt-4">
+      <h1 class="mb-4 text-center">個人資料管理系統</h1>
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">新增個人資料</div>
+        <div class="card-body">
+          <form @submit.prevent="addPerson">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="name" class="form-label"
+                  >姓名<span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  class="form-control"
+                  v-model="newPerson.name"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="email" class="form-label"
+                  >Email<span class="text-danger">*</span></label
+                >
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  class="form-control"
+                  v-model="newPerson.email"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="dateOfBirth" class="form-label"
+                  >生日<span class="text-danger">*</span></label
+                >
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  id="dateOfBirth"
+                  class="form-control"
+                  v-model="newPerson.dateOfBirth"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="address" class="form-label">地址</label>
+                <input
+                  type="text"
+                  name="address"
+                  id="address"
+                  class="form-control"
+                  v-model="newPerson.address"
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="phoneNumber" class="form-label">電話</label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  id="phoneNumber"
+                  class="form-control"
+                  v-model="newPerson.phoneNumber"
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="gender" class="form-label">性別</label>
+                <select
+                  name="gender"
+                  id="gender"
+                  class="form-select"
+                  v-model="newPerson.gender"
+                >
+                  <option value="">請選擇</option>
+                  <option value="男">男</option>
+                  <option value="女">女</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+              <div class="col-12 text-center">
+                <button
+                  type="submit"
+                  class="btn btn-success me-2"
+                  :disabled="isLoading"
+                >
+                  <span
+                    v-if="isLoading"
+                    class="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span
+                  >{{ isLoading? '新增中' : '新增資料'}}</button
+                ><button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="resetForm"
+                >
+                  清空表單
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <hr class="my-4" />
+      <div class="table-responstive" v-if="persons.length > 0">
+        <table class="table table-striped table-bordered table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th>姓名</th>
+              <th>Email</th>
+              <th>生日</th>
+              <th>地址</th>
+              <th>電話</th>
+              <th>性別</th>
+              <th>版本</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="person in persons" :key="person.id">
+              <td>{{person.name}}</td>
+              <td>{{person.email}}</td>
+              <td>{{formatDate(person.dateOfBirth)}}</td>
+              <td>{{person.address || '無'}}</td>
+              <td>{{person.phoneNumber || '無'}}</td>
+              <td>{{person.gender || '無'}}</td>
+              <td>{{person.version}}</td>
+              <td>
+                <button class="btn btn-info me-2" @click="viewPerson(person)">查看</button
+                >
+                <button class="btn btn-warning me-2" @click="editPerson(person)">編輯</button
+                >
+                <button class="btn btn-sm btn-danger" @click="confirmDelete(person.id)">刪除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="alert alert-info text-center" role="alert">
+        目前沒有個人資料，請新增
+      </div>
+      <div v-if="isLoadingData" class="text-center mt-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>資料加載中...</p>
+      </div>
+      <div v-if="errorMessage" class="alert alert-danger mt-3" role="alert">
+        {{ errorMessage }}
+      </div>
+      <div class="alert alert-success mt-3" role="alert" v-if="successMessage">
+        {{ successMessage }}
+      </div>
+
+      <div class="modal fade" id="editPersonModal" tabindex="-1" aria-labelledby="editPersonModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title" id="editPersonModalLabel">編輯個人資料</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="cancelEdit"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form v-if="editingPerson" @submit.prevent="updatePerson">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="editName" class="form-label">姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="editName" v-model="editingPerson.name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="editEmail" v-model="editingPerson.email" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editDateOfBirth" class="form-label">生日 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="editDateOfBirth" v-model="editingPerson.dateOfBirth" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editAddress" class="form-label">地址</label>
+                                    <input type="text" class="form-control" id="editAddress" v-model="editingPerson.address">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editPhoneNumber" class="form-label">電話</label>
+                                    <input type="tel" class="form-control" id="editPhoneNumber" v-model="editingPerson.phoneNumber">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editGender" class="form-label">性別</label>
+                                    <select class="form-select" id="editGender" v-model="editingPerson.gender">
+                                        <option value="">請選擇</option>
+                                        <option value="男">男</option>
+                                        <option value="女">女</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editVersion" class="form-label">版本號</label>
+                                    <input type="text" class="form-control" id="editVersion" :value="editingPerson.version" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editLastModified" class="form-label">上次修改</label>
+                                    <input type="text" class="form-control" id="editLastModified" :value="formatDate(editingPerson.lastModified)" readonly>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="cancelEdit">取消</button>
+                        <button type="submit" class="btn btn-warning" form="editPersonModalForm" :disabled="isLoading" @click="updatePerson">
+                            <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            {{ isLoading ? '儲存中...' : '儲存變更' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-muted text-center mt-5">前端基礎結構已準備就緒。</p>
+    </div>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

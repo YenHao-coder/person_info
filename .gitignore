@@ -1,0 +1,95 @@
+# Visual Studio and .NET related files
+###################################
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.json.user
+*.vspscc
+*.vssscc
+*.buildscc
+*.kqs
+*.vsd
+*.vsdx
+*.suo
+*.dbmdl
+*.jfm
+*.pfx
+*.snk
+*.licx
+*.userprefs
+*.vsix
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+.vs/
+publish/
+artifacts/
+
+# Local Test Results
+TestResults/
+.vs/
+
+# Project and Solution files
+*.csproj.user
+*.vbproj.user
+*.fsproj.user
+*.dbproj.user
+*.sqlproj.user
+
+# Package files
+*.nupkg
+*.snk
+*.licx
+packages/
+node_modules/
+bower_components/
+
+# Dependency directories
+# NuGet packages
+# .NET Core tools
+.tool-assets/
+
+# Visual Studio Code specific files
+.vscode/
+
+# Logs
+*.log
+log/
+
+# Runtime files
+*.dll
+*.exe
+*.pdb
+*.config
+*.json # Be careful with .json, only ignore if it's runtime generated config/data
+
+# MySQL specific files (e.g., from local database instances)
+*.frm
+*.ibd
+*.myi
+*.myd
+*.opt
+*.bak
+*.sql
+
+# Database files (if using SQLite or other file-based DBs directly in project)
+*.db
+*.sqlite
+*.mdf
+*.ldf
+
+# Front-end specific (if applicable, though your current front-end is simple HTML/JS)
+# If you later introduce npm/yarn for front-end, you'll need node_modules/ here
+# and possibly other build output folders like dist/ or build/
+
+# User-specific files
+.DS_Store # macOS
+Thumbs.db # Windows
+Desktop.ini # Windows
+*/Thumbs.db
+*/.DS_Store
