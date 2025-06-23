@@ -20,17 +20,25 @@ const app = Vue.createApp({
       editingPerson: null, // 儲存當前編輯的 person 數據
       isediting: false, // 標誌是否處於編輯狀態
       originalPersonData: null, // 儲存編輯前原始數據，方便比對
+      searchQuery:'',
+      
     };
   },
   methods: {
     //獲取所有個人資料的方法
-    async fetchPersons() {
+    async fetchPersons(searchString = '') {
       this.isLoadingData = true; // 開始加載，顯示加載動畫
       this.errorMessage = ""; // 清除之前的錯誤訊息
       this.successMessage = ""; // 清除成功訊息
       try {
+        let url = `${this.backendApiUrl}`;
+        if(searchString){
+          // 若有搜尋字串，則添加到 URL 查詢參數
+          // encodeURIComponent 用於確保搜尋字串中的特殊字元被正確編碼
+          url += `?searchString=${encodeURIComponent(searchString)}`;
+        }
         // 使用 fetch API 發送 GET 請求
-        const response = await fetch(this.backendApiUrl);
+        const response = await fetch(url);
 
         if (!response.ok) {
           // 如果 HTTP 狀態碼不是 2XX
@@ -134,7 +142,7 @@ const app = Vue.createApp({
         this.editingPerson.dateOfBirth = date.toISOString().split("T")[0];
       }
 
-      isediting = true; // 進入編輯模式
+      this.isediting = true; // 進入編輯模式
       this.originalPersonData = JSON.parse(JSON.stringify(person)); // 儲存原始資料提供比對
       this.errorMessage = ""; // 清除錯誤訊息
       this.successMessage = ""; // 清除成功訊息
@@ -309,6 +317,16 @@ const app = Vue.createApp({
         this.isLoading = false;
         this.clearMessages();
       }
+    },
+    // 執行搜尋的方法
+    performSearch() {
+      // 調用 fetchPersons 並傳入 searchQuery 的值
+      this.fetchPersons(this.searchQuery);
+    },
+    // 清除搜尋並重新加載所有資料的方法
+    clearSearch() {
+      this.searchQuery = ''; // 清空搜尋輸入框綁定的值
+      this.fetchPersons(); //獲取所有資料
     },
   },
   // 在組件掛載後立即調用 fetchPersons 方法
