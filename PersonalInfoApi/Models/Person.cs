@@ -35,7 +35,7 @@ namespace PersonalInfoApi.Models{
 
         [Required]
         [MaxLength(20)]
-        public string Version { get; set; } = "1.0.0"; //預設值與資料庫一致
+        public string Version { get; set; } = "1.00"; //預設值與資料庫一致
 
         //舊版資料欄位
         [MaxLength(255)]
