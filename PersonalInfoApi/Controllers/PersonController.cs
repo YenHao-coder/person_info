@@ -16,20 +16,20 @@ namespace PersonalInfoApi.Controllers {
         }
 
         // GET: api/Persons
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Person>>> GetPersons() {
-            _logger.LogInformation("接收到 GetPersons 請求。");
-            try {
-                var persons = await _context.Persons.ToListAsync();
-                _logger.LogInformation($"成功獲取{persons.Count} 筆個人資料。");
-                return Ok(persons); // 返回 200 OK 和資料
-            }
-            catch (Exception ex) {
-                _logger.LogError(ex, "獲取個人資料時發生錯誤。");
-                // 返回 500 Internal Server Error 和錯誤訊息
-                return StatusCode(500, "獲取個人資料時發生內部伺服器錯誤。");
-            }
-        }
+        // [HttpGet]
+        // public async Task<ActionResult<IEnumerable<Person>>> GetPersons() {
+        //     _logger.LogInformation("接收到 GetPersons 請求。");
+        //     try {
+        //         var persons = await _context.Persons.ToListAsync();
+        //         _logger.LogInformation($"成功獲取{persons.Count} 筆個人資料。");
+        //         return Ok(persons); // 返回 200 OK 和資料
+        //     }
+        //     catch (Exception ex) {
+        //         _logger.LogError(ex, "獲取個人資料時發生錯誤。");
+        //         // 返回 500 Internal Server Error 和錯誤訊息
+        //         return StatusCode(500, "獲取個人資料時發生內部伺服器錯誤。");
+        //     }
+        // }
         // GET: api/Persons/5
         [HttpGet("{id}")] // 路由參數 {id}
         public async Task<ActionResult<Person>> GetPerson(int id) {
@@ -190,6 +190,31 @@ namespace PersonalInfoApi.Controllers {
 
             _logger.LogInformation($"成功刪除 ID 為 {id} 的個人資料。");
             return NoContent(); // 204
+        }
+        // GET: api/Persons
+        // 這個方法現在同時處理獲取所有資料和帶搜尋參數的請求
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Person>>> GetPersons([FromQuery] string? searchString) {
+            _logger.LogInformation($"接收到 GetPersons 請求。搜尋字串: '{searchString ?? "無"}'");
+
+            if(_context.Persons == null) {
+                _logger.LogWarning("Person 實體集為空，無法獲取個人資料");
+                return NotFound();
+            }
+
+            IQueryable<Person> persons = _context.Persons;
+            // 若提供搜尋字串，則進行模糊搜尋
+            if(!string.IsNullOrWhiteSpace(searchString)) {
+                // 執行不區分大小寫得模糊搜尋，搜尋姓名或 Email
+                persons = persons.Where(p => p.Name != null && p.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) || p.Email != null && p.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase));
+                _logger.LogInformation($"正在按搜尋字串 '{searchString}' 篩選資料。");
+            }
+            // 假設您想按照某個順序返回，如按 Id 遞增
+            persons = persons.OrderBy(p => p.Id);
+
+            var result = await persons.ToListAsync();
+            _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
+            return Ok(result);
         }
     }
 }
