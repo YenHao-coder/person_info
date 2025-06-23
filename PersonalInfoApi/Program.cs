@@ -14,12 +14,12 @@ builder.Services.AddSwaggerGen();
 
 // 啟用 CORS
 builder.Services.AddCors(options => {
-    options.AddPolicy("AllowAllOrigins",
-    builder => {
-        builder.AllowAnyOrigin() // 允許所有來源
-                .AllowAnyMethod() // 允許所有 HTTP 方法 (GET, POST, PUT, DELETE, OPTIONS等)
-                .AllowAnyHeader(); // 允許所有請求頭
-    });
+    // options.AddPolicy("AllowAllOrigins",
+    // builder => {
+    //     builder.AllowAnyOrigin() // 允許所有來源
+    //             .AllowAnyMethod() // 允許所有 HTTP 方法 (GET, POST, PUT, DELETE, OPTIONS等)
+    //             .AllowAnyHeader(); // 允許所有請求頭
+    // });
 
     options.AddDefaultPolicy(
         policy =>
@@ -40,8 +40,8 @@ if(string.IsNullOrEmpty(connectionString))
 }
 else
 {
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)) // 確保字元集設定
-    );
+    builder.Services.AddDbContext<ApplicationDbContext>(options => {options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),mySqlOptions => mySqlOptions.EnableStringComparisonTranslations());// 確保字元集設定
+    });
 }
 // --- 註冊結束 ---
 
@@ -56,9 +56,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
-app.UseCors("AllowAllOrigins"); // 啟用 CORS 中介軟體
+app.UseCors(); // 啟用 CORS 中介軟體
 
 
 // app.MapGet("/weatherforecast", () =>
