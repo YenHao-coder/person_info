@@ -81,6 +81,10 @@ const app = Vue.createApp({
         this.isLoadingData = false; // 加載結束，無論成功或失敗
       }
     },
+    // 列印圖表功能
+    printChart() {
+      alert("列印圖表功能待實現！");
+    },
     // 生成分頁按鈕
     generatePageNumber() {
       this.pageNumbers = [];
@@ -300,15 +304,12 @@ const app = Vue.createApp({
           );
         }
 
-
         // PUT 返回 204 No Content
-        // 更新成功後，重新fetch數據，尤其版本號與 LastModified 
+        // 更新成功後，重新fetch數據，尤其版本號與 LastModified
         this.successMessage = "資料更新成功!";
         console.log("個人資料更新成功:", this.editingPerson); // hint
         this.cancelEdit(); // modal closed and reset
         this.fetchPersons(); // web reloaded
-
-        
 
         // 尋找列表中要更新的原始數據索引
         // const index = this.persons.findIndex(
@@ -371,10 +372,10 @@ const app = Vue.createApp({
           );
         }
         // 刪除成功後，重新 fetch 數據
-        
+
         this.successMessage = `ID 為 ${id} 的個人資料以成功刪除。`;
         console.log(`個人資料 ID: ${id} 已刪除。`);
-        this.fetchPersons(); 
+        this.fetchPersons();
       } catch (error) {
         console.error("刪除個人資料失敗:", error);
         this.errorMessage = `刪除資料失敗: ${error.message}`;
@@ -401,60 +402,359 @@ const app = Vue.createApp({
   mounted() {
     this.fetchPersons();
     console.log("前端 Vue.js 應用程式已掛載，並嘗試加載資料。");
+    
   },
 });
+// 1. 性別分佈圖組件 (GenderChartComponent)
+const GenderChartComponent = {
+    template: `
+        <div>
+            <canvas ref="genderChartCanvas"></canvas>
+            <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
+                載入性別分佈數據中...
+            </div>
+            <div v-if="chartError" class="alert alert-danger mt-3" role="alert">
+                {{ chartError }}
+            </div>
+            <div v-if="chartDataLoaded && !chartHasData" class="alert alert-warning mt-3" role="alert">
+                目前沒有性別分佈數據可供顯示。
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            chartInstance: null, // 儲存 Chart.js 實例
+            chartDataLoaded: false,
+            chartError: '',
+            chartHasData: false,
+            backendApiUrl: "http://localhost:5098/api/Persons", // API URL
+        };
+    },
+    mounted() {
+        this.fetchAndRenderChart();
+    },
+    methods: {
+        async fetchAndRenderChart() {
+            this.chartDataLoaded = false;
+            this.chartError = '';
+            this.chartHasData = false;
+            try {
+                const response = await fetch(`${this.backendApiUrl}/GenderDistribution`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP 錯誤! 狀態碼: ${response.status} - ${errorText}`);
+                }
+                const data = await response.json();
+                console.log("Gender Distribution API Data:", data);
 
+                if (data && data.labels && data.data && data.labels.length > 0) {
+                    this.chartHasData = true;
+                    this.renderChart(data.labels, data.data);
+                } else {
+                    this.chartHasData = false;
+                }
+            } catch (error) {
+                console.error("獲取性別分佈數據失敗:", error);
+                this.chartError = `載入性別分佈圖表失敗: ${error.message}`;
+            } finally {
+                this.chartDataLoaded = true;
+            }
+        },
+        renderChart(labels, data) {
+            const ctx = this.$refs.genderChartCanvas.getContext('2d');
+
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+            }
+
+            this.chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '性別分佈',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.6)', // 藍色 for 男
+                            'rgba(255, 99, 132, 0.6)', // 紅色 for 女
+                            'rgba(255, 206, 86, 0.6)', // 黃色 for 其他
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(153, 102, 255, 0.6)',
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '個人資料性別分佈',
+                            font: {
+                                size: 18
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    },
+    // 在組件銷毀前銷毀 Chart 實例，避免內存洩漏
+    beforeUnmount() {
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
+    }
+};
+// 2. 年齡分佈圖組件 (AgeChartComponent)
+const AgeChartComponent = {
+    template: `
+        <div>
+            <canvas ref="ageChartCanvas"></canvas>
+            <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
+                載入年齡分佈數據中...
+            </div>
+            <div v-if="chartError" class="alert alert-danger mt-3" role="alert">
+                {{ chartError }}
+            </div>
+            <div v-if="chartDataLoaded && !chartHasData" class="alert alert-warning mt-3" role="alert">
+                目前沒有年齡分佈數據可供顯示。
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            chartInstance: null,
+            chartDataLoaded: false,
+            chartError: '',
+            chartHasData: false,
+            backendApiUrl: "http://localhost:5098/api/Persons",
+        };
+    },
+    mounted() {
+        this.fetchAndRenderChart();
+    },
+    methods: {
+        async fetchAndRenderChart() {
+            this.chartDataLoaded = false;
+            this.chartError = '';
+            this.chartHasData = false;
+            try {
+                const response = await fetch(`${this.backendApiUrl}/AgeDistribution`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP 錯誤! 狀態碼: ${response.status} - ${errorText}`);
+                }
+                const data = await response.json();
+                console.log("Age Distribution API Data:", data);
+
+                if (data && data.labels && data.data && data.labels.length > 0) {
+                    this.chartHasData = true;
+                    this.renderChart(data.labels, data.data);
+                } else {
+                    this.chartHasData = false;
+                }
+            } catch (error) {
+                console.error("獲取年齡分佈數據失敗:", error);
+                this.chartError = `載入年齡分佈圖表失敗: ${error.message}`;
+            } finally {
+                this.chartDataLoaded = true;
+            }
+        },
+        renderChart(labels, data) {
+            const ctx = this.$refs.ageChartCanvas.getContext('2d');
+
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+            }
+
+            this.chartInstance = new Chart(ctx, {
+                type: 'bar', // 長條圖類型
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '年齡分佈',
+                        data: data,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)', // 可以使用單一顏色或多種顏色
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '個人資料年齡分佈',
+                            font: {
+                                size: 18
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '人數'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '年齡區間'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    },
+    beforeUnmount() {
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
+    }
+};
+// 3. 趨勢分析圖組件 (TrendChartComponent)
+const TrendChartComponent = {
+    template: `
+        <div>
+            <canvas ref="trendChartCanvas"></canvas>
+            <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
+                載入趨勢分析數據中...
+            </div>
+            <div v-if="chartError" class="alert alert-danger mt-3" role="alert">
+                {{ chartError }}
+            </div>
+            <div v-if="chartDataLoaded && !chartHasData" class="alert alert-warning mt-3" role="alert">
+                目前沒有趨勢分析數據可供顯示。
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            chartInstance: null,
+            chartDataLoaded: false,
+            chartError: '',
+            chartHasData: false,
+            backendApiUrl: "http://localhost:5098/api/Persons",
+        };
+    },
+    mounted() {
+        // 等待後端 API
+        this.chartError = '趨勢分析圖表功能尚未開發，請等待後端 API。';
+        this.chartDataLoaded = true; // 標示為已載入，但顯示錯誤訊息
+    },
+    methods: {
+        // 這裡會放置獲取趨勢數據和繪製折線圖的邏輯
+    },
+    beforeUnmount() {
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
+    }
+};
+const routes = [
+    { path: '/charts/gender', component: GenderChartComponent },
+    { path: '/charts/age', component: AgeChartComponent },
+    { path: '/charts/trend', component: TrendChartComponent },
+    // 當用戶訪問根路徑時，可以選擇重定向到一個默認圖表，或者顯示提示信息
+    { path: '/', redirect: '/charts/gender' }, // 預設跳轉到性別分佈圖
+];
+const router = VueRouter.createRouter({
+    history: VueRouter.createWebHashHistory(), // 使用 Hash 模式，在網址中會出現 #，適合靜態文件伺服
+    // history: VueRouter.createWebHistory(), // 如果後端有配置，可以使用 History 模式
+    routes,
+});
+
+app.use(router);
 app.mount("#app");
 
 function showAlert(message, type) {
-  const alertPlaceholder = document.getElementById('alertPlaceholder');
-  if(!alertPlaceholder) return;
+  const alertPlaceholder = document.getElementById("alertPlaceholder");
+  if (!alertPlaceholder) return;
 
-  
-  if(alertPlaceholder._timer){clearTimeout(alertPlaceholder._timer);alertPlaceholder._timer = null;}
-  
-  if(alertPlaceholder._transitionEndHandler){alertPlaceholder.removeEventListener('transitionend', alertPlaceholder._transitionEndHandler);alertPlaceholder._transitionEndHandler = null;}
+  if (alertPlaceholder._timer) {
+    clearTimeout(alertPlaceholder._timer);
+    alertPlaceholder._timer = null;
+  }
 
-  alertPlaceholder.innerHTML = '';
+  if (alertPlaceholder._transitionEndHandler) {
+    alertPlaceholder.removeEventListener(
+      "transitionend",
+      alertPlaceholder._transitionEndHandler
+    );
+    alertPlaceholder._transitionEndHandler = null;
+  }
 
-  const wrapper = document.createElement('div');
+  alertPlaceholder.innerHTML = "";
+
+  const wrapper = document.createElement("div");
   wrapper.innerHTML = [
-    `<div class="alert alert-${type} alert-dismissible fade show" role="alert">`,`<div>${message}</div>`,`<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="close"></button>`,`</div>`
-  ].join('');
+    `<div class="alert alert-${type} alert-dismissible fade show" role="alert">`,
+    `<div>${message}</div>`,
+    `<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="close"></button>`,
+    `</div>`,
+  ].join("");
 
   alertPlaceholder.append(wrapper);
-  
+
   setTimeout(() => {
-    alertPlaceholder.classList.add('active');
+    alertPlaceholder.classList.add("active");
   }, 10);
 
-  const alertElement = wrapper.querySelector('.alert');
+  const alertElement = wrapper.querySelector(".alert");
 
-  setTimeout(() => {    
-    if(alertElement) {
+  setTimeout(() => {
+    if (alertElement) {
       const alert = bootstrap.Alert.getInstance(alertElement);
-      if(alert) {
-      alert.close();
-    } else{
-      alertElement.classList.remove('show');
+      if (alert) {
+        alert.close();
+      } else {
+        alertElement.classList.remove("show");
+      }
     }
-  }
   }, 1800);
-  if(alertElement) {
-    alertElement.addEventListener('closed.bs.alert', () => {
+  if (alertElement) {
+    alertElement.addEventListener("closed.bs.alert", () => {
       wrapper.remove();
-      console.log('Inner alert dismissed and removed from DOM.');
+      console.log("Inner alert dismissed and removed from DOM.");
     });
   }
 
   alertPlaceholder._transitionEndHandler = (event) => {
-    if(event.propertyName === "top" && !alertPlaceholder.classList.contains('active')) {
-      if(alertPlaceholder.children.length === 0){
-        alertPlaceholder.innerHTML = '';
+    if (
+      event.propertyName === "top" &&
+      !alertPlaceholder.classList.contains("active")
+    ) {
+      if (alertPlaceholder.children.length === 0) {
+        alertPlaceholder.innerHTML = "";
       }
-      alertPlaceholder.removeEventListener('transitionend', alertPlaceholder._transitionEndHandler);
+      alertPlaceholder.removeEventListener(
+        "transitionend",
+        alertPlaceholder._transitionEndHandler
+      );
       alertPlaceholder._transitionEndHandler = null;
     }
   };
-  alertPlaceholder.addEventListener('transitionend', alertPlaceholder._transitionEndHandler);
+  alertPlaceholder.addEventListener(
+    "transitionend",
+    alertPlaceholder._transitionEndHandler
+  );
 }

@@ -242,5 +242,26 @@ namespace PersonalInfoApi.Controllers {
             // _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
             // return Ok(result);
         }
+
+        /// <summary>
+        /// 獲取個人資料的性別分布數據
+        /// </summary>
+        /// <returns>包含性別標籤和對應人數的聚合數據</returns>
+        [HttpGet("GenderDistribution")]
+        public IActionResult GetGenderDistribution() {
+            var genderData = _context.Persons.GroupBy( p => p.Gender).Select( g => new {Gender = g.Key, // g.Key 是分組的鍵（性別值）
+            Count = g.Count() // g.Count() 是每個分組的計數
+            }).ToList();
+
+            var labels = new List<string>();
+            var data = new List<int>();
+
+            foreach(var item in genderData){
+                // Gender 為 null 或空字串，歸類 "未知"
+                labels.Add(string.IsNullOrEmpty(item.Gender) ? "未知" : item.Gender);
+                data.Add(item.Count);
+            }
+            return Ok (new {labels, data});
+        }
     }
 }
