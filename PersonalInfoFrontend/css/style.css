@@ -1,0 +1,40 @@
+/* style.css */
+
+/* 確保 body 有足夠的空間，如果內容很少，可能需要 min-height: 100vh; */
+body {
+    position: relative;
+    padding-top: 20px; /* 給頂部的提示框預留一些空間，防止與標題重疊 */
+}
+
+#alertPlaceholder {
+    position: fixed;        /* 固定定位 */
+    top: -100px;            /* 初始位置：隱藏在視窗上方 */
+    left: 50%;              /* 水平居中起點 */
+    transform: translateX(-50%); /* 橫向居中 */
+    width: 80%;             /* 寬度設定 */
+    max-width: 600px;       /* 最大寬度 */
+    z-index: 1060;          /* 確保在所有 Modal 和 Navbar 之上顯示 (比 Bootstrap 預設的 z-index 更高) */
+    pointer-events: none;   /* 預設不攔截點擊事件 */
+    overflow: hidden;       /* 確保子元素超出部分不顯示 */
+    
+    /* 容器自身的過渡效果：用於滑入/滑出 */
+    transition: top 0.5s ease-out, opacity 0.5s ease-out; /* top 和 opacity 都加過渡 */
+    opacity: 0; /* 初始時透明 */
+}
+
+/* 當提示框出現時，添加此 class */
+#alertPlaceholder.active {
+    top: 10px;    /* 滑入到可見位置 */
+    opacity: 1;   /* 顯示出來 */
+    pointer-events: all; /* 顯示時允許點擊 */
+}
+
+/* 確保 alert 框本身在 alertPlaceholder 內水平居中並佔滿寬度 */
+#alertPlaceholder .alert {
+    width: 100%;
+    margin-bottom: 0; /* 移除 alert 預設的 margin-bottom */
+    text-align: center; /* 讓 alert 內部文字居中 */
+}
+
+/* 確保 alert 框本身的淡入淡出效果是 Bootstrap 預設的 */
+/* .alert.fade.show 是淡入，移除 show 類別會觸發淡出 */
