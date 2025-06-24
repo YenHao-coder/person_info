@@ -36,6 +36,7 @@ namespace PersonalInfoApi.Models{
         [Required]
         [MaxLength(20)]
         public string Version { get; set; } = "1.00"; //預設值與資料庫一致
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // 設置默認值為當前 UTC 時間
 
         //舊版資料欄位
         [MaxLength(255)]
