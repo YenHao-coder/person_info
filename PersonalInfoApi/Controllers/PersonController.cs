@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // 引入 EF Core
 using PersonalInfoApi.Data; //引入 DbContext
 using PersonalInfoApi.Models; // 引入 Person Model
+using System;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace PersonalInfoApi.Controllers {
     [ApiController]
@@ -15,6 +18,57 @@ namespace PersonalInfoApi.Controllers {
             _logger = logger;
         }
 
+        // GET: api/Persons
+        // 這個方法現在同時處理獲取所有資料和帶搜尋參數的請求
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<Person>>> GetPersons([FromQuery] string? searchString, [FromQuery] int pageNumber = 1, // 頁碼 1 
+        [FromQuery] int pageSize = 5 // 每頁 5 筆
+        ) {
+            _logger.LogInformation($"接收到 GetPersons 請求。搜尋字串: '{searchString ?? "無"}', 頁碼: {pageNumber}, 每頁筆數: {pageSize}。");
+
+            if(_context.Persons == null) {
+                _logger.LogWarning("Person 實體集為空，無法獲取個人資料");
+                return NotFound();
+            }
+
+            // 1. 應用搜尋篩選
+            IQueryable<Person> persons = _context.Persons;
+            // 若提供搜尋字串，則進行模糊搜尋
+            if(!string.IsNullOrWhiteSpace(searchString)) {
+                // 執行不區分大小寫得模糊搜尋，搜尋姓名或 Email
+                persons = persons.Where(p => p.Name != null && p.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) || p.Email != null && p.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase));
+                _logger.LogInformation($"正在按搜尋字串 '{searchString}' 篩選資料。");
+            }
+            // 2. 計算總資料筆數 (在分頁之前)
+            int totalCount = await persons.CountAsync();
+
+            // 3. 應用分頁邏輯
+            // 確保資料有固定排序，分頁結果才一致
+            persons = persons.OrderBy(p => p.Id);
+
+            var items = await persons.Skip((pageNumber - 1) * pageSize) // 跳過當前頁面的資料
+            .Take(pageSize) // 取出當前頁面資料
+            .ToListAsync();
+
+            // 4. 準備分頁結果 DTO 並返回
+            var pagedResult = new PagedResult<Person> {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                // 計算總頁數
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
+            _logger.LogInformation($"成功獲取分頁個人資料。總筆數: {totalCount}, 當前頁碼: {pageNumber}, 總頁數: {pagedResult.TotalPages}。");
+            return Ok(pagedResult);
+
+            // 假設您想按照某個順序返回，如按 Id 遞增
+            // persons = persons.OrderBy(p => p.Id);
+
+            // var result = await persons.ToListAsync();
+            // _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
+            // return Ok(result);
+        }
         // GET: api/Persons
         // [HttpGet]
         // public async Task<ActionResult<IEnumerable<Person>>> GetPersons() {
@@ -30,6 +84,72 @@ namespace PersonalInfoApi.Controllers {
         //         return StatusCode(500, "獲取個人資料時發生內部伺服器錯誤。");
         //     }
         // }
+
+        /// <summary>
+        /// 獲取個人資料的性別分布數據
+        /// </summary>
+        /// <returns>包含性別標籤和對應人數的聚合數據</returns>
+        [HttpGet("GenderDistribution")]
+        public IActionResult GetGenderDistribution() {
+            var genderData = _context.Persons.GroupBy( p => p.Gender).Select( g => new {Gender = g.Key, // g.Key 是分組的鍵（性別值）
+            Count = g.Count() // g.Count() 是每個分組的計數
+            }).ToList();
+
+            var labels = new List<string>();
+            var data = new List<int>();
+
+            foreach(var item in genderData){
+                // Gender 為 null 或空字串，歸類 "未知"
+                labels.Add(string.IsNullOrEmpty(item.Gender) ? "未知" : item.Gender);
+                data.Add(item.Count);
+            }
+            return Ok (new {labels, data});
+        }
+
+        /// <summary>
+        /// 獲取個人資料的年齡分佈數據
+        /// </summary>
+        /// <returns>包含年齡區間標籤和對應人數的聚合數據</returns>
+        [HttpGet("AgeDistribution")] // 新增的 API 端點路由
+        public IActionResult GetAgeDistribution(){
+            var ageData = _context.Persons
+            .Where(p => p.DateOfBirth != DateTime.MinValue).AsEnumerable()
+            .Select(p=>{
+                int age = DateTime.Today.Year - p.DateOfBirth.Year;
+                if(DateTime.Today < p.DateOfBirth.AddYears(age)) {
+                    age--;
+                }
+                return age;
+            }).GroupBy(age => {
+                if(age>=0 && age<=18) return "0-18歲";
+                else if(age>=19 && age<=35) return "19-35歲";
+                else if(age>=36 && age<=50) return "36-50歲";
+                else if(age>=51) return "51歲以上";
+                else return "未知年齡";
+            }).Select(g => new {
+                AgeGroup = g.Key,
+                Count = g.Count()
+            }).ToList();
+
+            var allAgeGroups = new List<string> {"0-18歲", "19-35歲", "36-50歲", "51歲以上"};
+            var labels = new List<string>();
+            var data = new List<int>();
+
+            foreach (var groupName in allAgeGroups) {
+                labels.Add(groupName);
+                data.Add(ageData.FirstOrDefault(a =>a.AgeGroup == groupName) ?.Count ?? 0);
+            }
+
+            var unknownAgeGroup = ageData.FirstOrDefault(a => a.AgeGroup == "未知年齡");
+            if(unknownAgeGroup != null) {
+                labels.Add(unknownAgeGroup.AgeGroup);
+                data.Add(unknownAgeGroup.Count);
+            }
+            return Ok(new {labels, data});
+
+        }
+
+
         // GET: api/Persons/5
         [HttpGet("{id}")] // 路由參數 {id}
         public async Task<ActionResult<Person>> GetPerson(int id) {
@@ -191,77 +311,8 @@ namespace PersonalInfoApi.Controllers {
             _logger.LogInformation($"成功刪除 ID 為 {id} 的個人資料。");
             return NoContent(); // 204
         }
-        // GET: api/Persons
-        // 這個方法現在同時處理獲取所有資料和帶搜尋參數的請求
-        [HttpGet]
-        public async Task<ActionResult<PagedResult<Person>>> GetPersons([FromQuery] string? searchString, [FromQuery] int pageNumber = 1, // 頁碼 1 
-        [FromQuery] int pageSize = 5 // 每頁 5 筆
-        ) {
-            _logger.LogInformation($"接收到 GetPersons 請求。搜尋字串: '{searchString ?? "無"}', 頁碼: {pageNumber}, 每頁筆數: {pageSize}。");
+        
 
-            if(_context.Persons == null) {
-                _logger.LogWarning("Person 實體集為空，無法獲取個人資料");
-                return NotFound();
-            }
-
-            // 1. 應用搜尋篩選
-            IQueryable<Person> persons = _context.Persons;
-            // 若提供搜尋字串，則進行模糊搜尋
-            if(!string.IsNullOrWhiteSpace(searchString)) {
-                // 執行不區分大小寫得模糊搜尋，搜尋姓名或 Email
-                persons = persons.Where(p => p.Name != null && p.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) || p.Email != null && p.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase));
-                _logger.LogInformation($"正在按搜尋字串 '{searchString}' 篩選資料。");
-            }
-            // 2. 計算總資料筆數 (在分頁之前)
-            int totalCount = await persons.CountAsync();
-
-            // 3. 應用分頁邏輯
-            // 確保資料有固定排序，分頁結果才一致
-            persons = persons.OrderBy(p => p.Id);
-
-            var items = await persons.Skip((pageNumber - 1) * pageSize) // 跳過當前頁面的資料
-            .Take(pageSize) // 取出當前頁面資料
-            .ToListAsync();
-
-            // 4. 準備分頁結果 DTO 並返回
-            var pagedResult = new PagedResult<Person> {
-                Items = items,
-                TotalCount = totalCount,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                // 計算總頁數
-                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-            };
-            _logger.LogInformation($"成功獲取分頁個人資料。總筆數: {totalCount}, 當前頁碼: {pageNumber}, 總頁數: {pagedResult.TotalPages}。");
-            return Ok(pagedResult);
-
-            // 假設您想按照某個順序返回，如按 Id 遞增
-            // persons = persons.OrderBy(p => p.Id);
-
-            // var result = await persons.ToListAsync();
-            // _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
-            // return Ok(result);
-        }
-
-        /// <summary>
-        /// 獲取個人資料的性別分布數據
-        /// </summary>
-        /// <returns>包含性別標籤和對應人數的聚合數據</returns>
-        [HttpGet("GenderDistribution")]
-        public IActionResult GetGenderDistribution() {
-            var genderData = _context.Persons.GroupBy( p => p.Gender).Select( g => new {Gender = g.Key, // g.Key 是分組的鍵（性別值）
-            Count = g.Count() // g.Count() 是每個分組的計數
-            }).ToList();
-
-            var labels = new List<string>();
-            var data = new List<int>();
-
-            foreach(var item in genderData){
-                // Gender 為 null 或空字串，歸類 "未知"
-                labels.Add(string.IsNullOrEmpty(item.Gender) ? "未知" : item.Gender);
-                data.Add(item.Count);
-            }
-            return Ok (new {labels, data});
-        }
+        
     }
 }
