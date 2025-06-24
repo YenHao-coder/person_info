@@ -632,10 +632,10 @@ const AgeChartComponent = {
     }
 };
 // 3. 趨勢分析圖組件 (TrendChartComponent)
-const TrendChartComponent = {
+const MonthlyTrendChartComponent = {
     template: `
         <div>
-            <canvas ref="trendChartCanvas"></canvas>
+            <canvas ref="monthlyTrendChartCanvas"></canvas>
             <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
                 載入趨勢分析數據中...
             </div>
@@ -657,13 +657,75 @@ const TrendChartComponent = {
         };
     },
     mounted() {
-        // 等待後端 API
-        this.chartError = '趨勢分析圖表功能尚未開發，請等待後端 API。';
-        this.chartDataLoaded = true; // 標示為已載入，但顯示錯誤訊息
+        this.fetchAndRenderChart();
     },
     methods: {
-        // 這裡會放置獲取趨勢數據和繪製折線圖的邏輯
-    },
+        async fetchAndRenderChart(){
+          try {
+            const response = await fetch(`${this.backendApiUrl}/MonthlyRegistrationTrend`);
+            if(!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            
+            
+            if(data && data.labels && data.data && data.labels.length > 0){
+              this.chartHasData = true;
+              this.renderChart(data.labels, data.data);
+            }else{
+              this.chartHasData = false;  
+            }
+          } catch(error){
+            console.error("Error fetching monthly trend data:", error);
+          } finally{
+            this.chartDataLoaded = true;
+          }
+        },
+        renderChart(labels, data){
+          const ctx = this.$refs.monthlyTrendChartCanvas.getContext('2d');
+
+          if(this.chartInstance){this.chartInstance.destroy();}
+
+          this.chartInstance = new Chart(ctx, {
+            type: 'line', // 折線圖類型
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '每月新增人數',
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)', // 折線顏色
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)', // 填充顏色
+                        tension: 0.1, // 使線條平滑
+                        fill: true // 填充線下區域
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '新增人數'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '每月新增個人資料趨勢'
+                        }
+                    }
+                }
+              })
+            }
+          },
     beforeUnmount() {
         if (this.chartInstance) {
             this.chartInstance.destroy();
@@ -673,7 +735,7 @@ const TrendChartComponent = {
 const routes = [
     { path: '/charts/gender', component: GenderChartComponent },
     { path: '/charts/age', component: AgeChartComponent },
-    { path: '/charts/trend', component: TrendChartComponent },
+    { path: '/charts/trend', component: MonthlyTrendChartComponent },
     // 當用戶訪問根路徑時，可以選擇重定向到一個默認圖表，或者顯示提示信息
     { path: '/', redirect: '/charts/gender' }, // 預設跳轉到性別分佈圖
 ];
