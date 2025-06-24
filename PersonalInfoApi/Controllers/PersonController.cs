@@ -55,7 +55,7 @@ namespace PersonalInfoApi.Controllers {
             _logger.LogInformation($"接收到 PutPerson 請求，ID: {id}。");
 
             // 檢查請求 ID 是否與物件 ID 一致
-            if(id !=person.Id) {
+            if(id != person.Id) {
                 _logger.LogWarning($"請求 ID ({id}) 與資料物件 ID({person.Id}) 不匹配。");
                 return BadRequest("請求 ID與資料物件 ID 不匹配。"); //400 Bad Request
             }
@@ -194,14 +194,17 @@ namespace PersonalInfoApi.Controllers {
         // GET: api/Persons
         // 這個方法現在同時處理獲取所有資料和帶搜尋參數的請求
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Person>>> GetPersons([FromQuery] string? searchString) {
-            _logger.LogInformation($"接收到 GetPersons 請求。搜尋字串: '{searchString ?? "無"}'");
+        public async Task<ActionResult<PagedResult<Person>>> GetPersons([FromQuery] string? searchString, [FromQuery] int pageNumber = 1, // 頁碼 1 
+        [FromQuery] int pageSize = 5 // 每頁 5 筆
+        ) {
+            _logger.LogInformation($"接收到 GetPersons 請求。搜尋字串: '{searchString ?? "無"}', 頁碼: {pageNumber}, 每頁筆數: {pageSize}。");
 
             if(_context.Persons == null) {
                 _logger.LogWarning("Person 實體集為空，無法獲取個人資料");
                 return NotFound();
             }
 
+            // 1. 應用搜尋篩選
             IQueryable<Person> persons = _context.Persons;
             // 若提供搜尋字串，則進行模糊搜尋
             if(!string.IsNullOrWhiteSpace(searchString)) {
@@ -209,12 +212,35 @@ namespace PersonalInfoApi.Controllers {
                 persons = persons.Where(p => p.Name != null && p.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) || p.Email != null && p.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase));
                 _logger.LogInformation($"正在按搜尋字串 '{searchString}' 篩選資料。");
             }
-            // 假設您想按照某個順序返回，如按 Id 遞增
+            // 2. 計算總資料筆數 (在分頁之前)
+            int totalCount = await persons.CountAsync();
+
+            // 3. 應用分頁邏輯
+            // 確保資料有固定排序，分頁結果才一致
             persons = persons.OrderBy(p => p.Id);
 
-            var result = await persons.ToListAsync();
-            _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
-            return Ok(result);
+            var items = await persons.Skip((pageNumber - 1) * pageSize) // 跳過當前頁面的資料
+            .Take(pageSize) // 取出當前頁面資料
+            .ToListAsync();
+
+            // 4. 準備分頁結果 DTO 並返回
+            var pagedResult = new PagedResult<Person> {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                // 計算總頁數
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
+            _logger.LogInformation($"成功獲取分頁個人資料。總筆數: {totalCount}, 當前頁碼: {pageNumber}, 總頁數: {pagedResult.TotalPages}。");
+            return Ok(pagedResult);
+
+            // 假設您想按照某個順序返回，如按 Id 遞增
+            // persons = persons.OrderBy(p => p.Id);
+
+            // var result = await persons.ToListAsync();
+            // _logger.LogInformation($"成功獲取 {result.Count} 筆個人資料。");
+            // return Ok(result);
         }
     }
 }
