@@ -127,7 +127,7 @@
                   編輯
                 </button>
                 <button
-                  class="btn btn-sm btn-danger"
+                  class="btn btn-sm btn-danger me-2"
                   @click="confirmDelete(person.id)"
                 >
                   刪除
@@ -172,9 +172,10 @@
                       name="name"
                       id="name"
                       class="form-control"
-                      v-model="newPerson.name"
-                      required
-                    />
+                      v-model="newPerson.name" @input="validateField('newPerson', 'name')" :class="{'is-invalid': errors.name}" />
+                      <div class="invalid-feedback" v-if="errors.name">
+                      {{ errors.name }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="email" class="form-label"
@@ -186,8 +187,13 @@
                       id="email"
                       class="form-control"
                       v-model="newPerson.email"
-                      required
+                      :class="{'is-invalid': errors.email}"
+                      v-model="newPerson.email"
+                      @input="validateField('newPerson', 'email')"
                     />
+                    <div class="invalid-feedback" v-if="errors.email">
+                      {{ errors.email }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="dateOfBirth" class="form-label"
@@ -198,9 +204,12 @@
                       name="dateOfBirth"
                       id="dateOfBirth"
                       class="form-control"
+                      :class="{'is-invalid': errors.dateOfBirth}"
                       v-model="newPerson.dateOfBirth"
-                      required
-                    />
+                      @input="validateField('newPerson', 'dateOfBirth')"/>
+                      <div class="invalid-feedback" v-if="errors.dateOfBirth">
+                      {{ errors.dateOfBirth }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="address" class="form-label">地址</label>
@@ -209,8 +218,12 @@
                       name="address"
                       id="address"
                       class="form-control"
+                      :class="{'is-invalid': errors.address}"
                       v-model="newPerson.address"
-                    />
+                      @input="validateField('newPerson', 'address')"/>
+                      <div class="invalid-feedback" v-if="errors.address">
+                      {{ errors.address }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="phoneNumber" class="form-label">電話</label>
@@ -219,8 +232,12 @@
                       name="phoneNumber"
                       id="phoneNumber"
                       class="form-control"
+                      :class="{'is-invalid': errors.phoneNumber}"
                       v-model="newPerson.phoneNumber"
-                    />
+                      @input="validateField('newPerson', 'phoneNumber')"/>
+                      <div class="invalid-feedback" v-if="errors.phoneNumber">
+                      {{ errors.phoneNumber }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="gender" class="form-label">性別</label>
@@ -229,12 +246,18 @@
                       id="gender"
                       class="form-select"
                       v-model="newPerson.gender"
+                      :class="{'is-invalid': errors.gender}"
+                      v-model="newPerson.gender"
+                      @change="validateField('newPerson', 'gender')"
                     >
                       <option value="">請選擇</option>
                       <option value="男">男</option>
                       <option value="女">女</option>
                       <option value="其他">其他</option>
                     </select>
+                    <div class="invalid-feedback" v-if="errors.gender">
+                      {{ errors.gender }}
+                    </div>
                   </div>
                   <div class="col-12 text-center">
                     <button
@@ -309,9 +332,12 @@
                       type="text"
                       class="form-control"
                       id="editName"
+                      :class="{'is-invalid': editErrors.name}"
                       v-model="editingPerson.name"
-                      required
-                    />
+                      @input="validateField('editingPerson', 'name')"/>
+                      <div class="invalid-feedback" v-if="editErrors.name">
+                      {{ editErrors.name }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="editEmail" class="form-label"
@@ -321,9 +347,12 @@
                       type="email"
                       class="form-control"
                       id="editEmail"
+                      :class="{'is-invalid': editErrors.email}"
                       v-model="editingPerson.email"
-                      required
-                    />
+                      @input="validateField('editingPerson', 'email')"/>
+                      <div class="invalid-feedback" v-if="editErrors.email">
+                      {{ editErrors.email }}
+                    </div>                    
                   </div>
                   <div class="col-md-6">
                     <label for="editDateOfBirth" class="form-label"
@@ -333,9 +362,12 @@
                       type="date"
                       class="form-control"
                       id="editDateOfBirth"
+                      :class="{'is-invalid': editErrors.dateOfBirth}"
                       v-model="editingPerson.dateOfBirth"
-                      required
-                    />
+                      @input="validateField('editingPerson', 'dateOfBirth')"/><div class="invalid-feedback" v-if="editErrors.dateOfBirth">
+                      {{ editErrors.dateOfBirth }}
+                    </div>
+                      
                   </div>
                   <div class="col-md-6">
                     <label for="editAddress" class="form-label">地址</label>
@@ -343,8 +375,12 @@
                       type="text"
                       class="form-control"
                       id="editAddress"
+                      :class="{'is-invalid': editErrors.address}"
                       v-model="editingPerson.address"
-                    />
+                      @input="validateField('editingPerson', 'address')"/><div class="invalid-feedback" v-if="editErrors.address">
+                      {{ editErrors.address }}
+                    </div>
+                      
                   </div>
                   <div class="col-md-6">
                     <label for="editPhoneNumber" class="form-label">電話</label>
@@ -352,21 +388,29 @@
                       type="tel"
                       class="form-control"
                       id="editPhoneNumber"
+                      :class="{'is-invalid': editErrors.phoneNumber}"
                       v-model="editingPerson.phoneNumber"
-                    />
+                      @input="validateField('editingPerson', 'phoneNumber')"
+                    /><div class="invalid-feedback" v-if="editErrors.phoneNumber">
+                      {{ editErrors.phoneNumber }}
+                  </div>                 
                   </div>
                   <div class="col-md-6">
                     <label for="editGender" class="form-label">性別</label>
                     <select
                       class="form-select"
                       id="editGender"
+                      :class="{'is-invalid': editErrors.gender}"
                       v-model="editingPerson.gender"
-                    >
+                      @change="validateField('editingPerson', 'gender')">
                       <option value="">請選擇</option>
                       <option value="男">男</option>
                       <option value="女">女</option>
                       <option value="其他">其他</option>
                     </select>
+                    <div class="invalid-feedback" v-if="editErrors.gender">
+                      {{ editErrors.gender }}
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="editVersion" class="form-label">版本號</label>
@@ -456,7 +500,6 @@
             </ul>
           </nav>
       </div>
-
       <p class="text-muted text-center mt-5" id="footer">前端基礎結構已準備就緒。</p>
     </div>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>

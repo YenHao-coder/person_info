@@ -26,6 +26,25 @@ const app = Vue.createApp({
       totalItems: 0, // 資料總筆數
       totalPages: 0, // 總頁數
       pageNumbers: [], // 渲染分頁按鈕的頁碼陣列
+
+      errors: {
+        name: "",
+        email: "",
+        dateOfBirth: "",
+        address: "",
+        phoneNumber: "",
+        gender: "",
+      },
+      // **新增**：用於儲存編輯表單的驗證錯誤
+      editErrors: {
+        name: "",
+        email: "",
+        dateOfBirth: "",
+        address: "",
+        phoneNumber: "",
+        gender: "",
+      },
+      isBatchDeleteMode: false, // 標誌是否處於批量刪除模式
     };
   },
   methods: {
@@ -56,7 +75,11 @@ const app = Vue.createApp({
         }
 
         const data = await response.json(); // 解析 JSON 響應
-        this.persons = data.items || []; // 從 response.items 獲取實際的資料陣列
+        this.persons = (data.items || []).map(person => {
+        // 如果已經在批量刪除模式，則保持之前的 isSelected 狀態
+        // 否則，初始化為 false
+        return { ...person, isSelected: this.isBatchDeleteMode ? (person.isSelected || false) : false };
+        });; // 從 response.items 獲取實際的資料陣列
 
         this.totalItems = data.totalCount || 0;
         this.totalPages = data.totalPages || 0;
@@ -130,14 +153,8 @@ const app = Vue.createApp({
       this.errorMessage = "";
       this.successMessage = "";
 
-      // 簡單的客戶端驗證
-      if (
-        !this.newPerson.name ||
-        !this.newPerson.email ||
-        !this.newPerson.dateOfBirth
-      ) {
-        this.errorMessage = "姓名、Email 和生日為必填欄位。";
-        this.isLoading = false;
+      if (!this.validateAllFields('newPerson')) {
+        showAlert("請檢查表單中的錯誤，並完成必填項目","danger");
         return;
       }
 
@@ -182,6 +199,87 @@ const app = Vue.createApp({
         this.clearMessages(); // clear msg
       }
     },
+    // 驗證欄位有效性
+    validateField(type, field) {
+      const targetObject = type === "newPerson" ? this.newPerson : this.editingPerson;
+      const errorObject = type === "newPerson" ? this.errors : this.editErrors;
+
+      errorObject[field] = ""; // 先清除該欄位的錯誤訊息
+
+      switch (field) {
+        case "name":
+          if (!targetObject.name) {
+            errorObject.name = "姓名為必填。";
+          } else if (targetObject.name.length < 2) {
+            errorObject.name = "姓名至少需要2個字。";
+          }
+          break;
+        case "email":
+          if (!targetObject.email) {
+            errorObject.email = "Email 為必填。";
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetObject.email)) {
+            errorObject.email = "請輸入有效的 Email 格式。";
+          }
+          break;
+        case "dateOfBirth":
+          if (!targetObject.dateOfBirth) {
+            errorObject.dateOfBirth = "生日為必填。";
+          } else {
+            const today = new Date();
+            const dob = new Date(targetObject.dateOfBirth);
+            if (dob > today) {
+              errorObject.dateOfBirth = "生日不能晚於今天。";
+            }
+          }
+          break;
+        case "address":
+          // 地址可以為空，如果非空則長度限制
+          if (targetObject.address && targetObject.address.length > 100) {
+            errorObject.address = "地址長度不能超過100個字。";
+          }
+          break;
+        case "phoneNumber":
+          // 電話可以為空，如果非空則檢查格式 (簡單範例：只允許數字和特定符號)
+          if (targetObject.phoneNumber && !/^[0]{1}[9]{1}[0-9]{8}$/.test(targetObject.phoneNumber)) {
+            errorObject.phoneNumber = "電話號碼格式不正確。";
+          } else if (targetObject.phoneNumber && targetObject.phoneNumber.length < 10) {
+            errorObject.phoneNumber = "電話號碼至少需要10位數。";
+          }
+          break;
+        case "gender":
+          // 性別可以為空，但如果選擇了無效值也可以提示
+          if (targetObject.gender && !['男', '女', '其他', ''].includes(targetObject.gender)) {
+            errorObject.gender = "請選擇有效的性別。";
+          }
+          break;
+      }
+      this.isLoading = false;
+      // 返回驗證結果 (是否有錯誤)
+      return Object.values(errorObject).every(msg => msg === "");
+    },
+    // 驗證所有欄位
+    validateAllFields(type) {
+        const targetObject = type === "newPerson" ? this.newPerson : this.editingPerson;
+        const errorObject = type === "newPerson" ? this.errors : this.editErrors;
+
+        // 重置所有錯誤訊息
+        for (const key in errorObject) {
+            errorObject[key] = "";
+        }
+
+        let isValid = true;
+        // 依次驗證每個欄位
+        if (!this.validateField(type, "name")) isValid = false;
+        if (!this.validateField(type, "email")) isValid = false;
+        if (!this.validateField(type, "dateOfBirth")) isValid = false;
+        if (!this.validateField(type, "address")) isValid = false;
+        if (!this.validateField(type, "phoneNumber")) isValid = false;
+        if (!this.validateField(type, "gender")) isValid = false;
+
+        this.isLoading = false;
+
+        return isValid;
+    },
     // 清空表單的方法
     resetForm() {
       this.newPerson = {
@@ -192,6 +290,9 @@ const app = Vue.createApp({
         phoneNumber: "",
         gender: "",
       };
+      for(const key in this.error){
+        this.errors[key] = "";
+      }
       this.successMessage = "";
       this.errorMessage = "";
     },
@@ -235,6 +336,10 @@ const app = Vue.createApp({
       this.errorMessage = "";
       this.successMessage = "";
 
+      for(const key in this.editErrors){
+        this.editErrors[key] = "";
+      }
+
       const editModalElement = document.getElementById("editPersonModal");
       const modalInstance = bootstrap.Modal.getInstance(editModalElement);
       if (modalInstance) {
@@ -265,13 +370,8 @@ const app = Vue.createApp({
       this.successMessage = "";
 
       // 客戶端驗證
-      if (
-        !this.editingPerson.name ||
-        !this.editingPerson.email ||
-        !this.editingPerson.dateOfBirth
-      ) {
-        this.errorMessage = "姓名、Email 和生日為必填欄位。";
-        this.isLoading = false;
+      if (!this.validateAllFields('editingPerson')) {
+        showAlert("請檢查表單中的錯誤，並完成必填項目。","danger")
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -383,6 +483,111 @@ const app = Vue.createApp({
         this.isLoading = false;
         this.clearMessages();
       }
+    },
+    // 進入批量刪除模式
+    enterBatchDeleteMode() {
+      this.isBatchDeleteMode = true;
+      // 初始化所有 persons 的 isSelected 狀態為 false
+      this.persons.forEach(person => {
+        // 使用 Vue.set 確保新增的屬性是響應式的
+        if (!person.hasOwnProperty('isSelected')) {
+          Vue.set(person, 'isSelected', false);
+        } else {
+          person.isSelected = false; // 清除之前的選擇狀態
+        }
+      });
+      this.clearMessages(); // 清除可能存在的訊息
+      showAlert("已進入批量刪除模式，請選擇要刪除的項目。", "info");
+      console.log("進入批量刪除模式");
+    },
+    // 退出批量刪除模式
+    exitBatchDeleteMode() {
+      this.isBatchDeleteMode = false;
+      // 清除所有 persons 的 isSelected 狀態，或直接移除這個屬性 (取決於需求)
+      this.persons.forEach(person => {
+        if (person.hasOwnProperty('isSelected')) {
+          person.isSelected = false;
+        }
+      });
+      this.clearMessages(); // 清除可能存在的訊息
+      showAlert("已退出批量刪除模式。", "info");
+      console.log("退出批量刪除模式");
+    },
+    // 切換單個項目的選中狀態
+    togglePersonSelection(person) {
+      // 確保 isSelected 屬性已存在且是響應式的
+      if (!person.hasOwnProperty('isSelected')) {
+        Vue.set(person, 'isSelected', true);
+      } else {
+        person.isSelected = !person.isSelected;
+      }
+      console.log(`Person ${person.id} selection: ${person.isSelected}`);
+    },
+    // 全選/取消全選當前頁面所有項目
+    toggleSelectAll(event) {
+      const isChecked = event.target.checked;
+      this.persons.forEach(person => {
+        if (!person.hasOwnProperty('isSelected')) {
+          Vue.set(person, 'isSelected', isChecked);
+        } else {
+          person.isSelected = isChecked;
+        }
+      });
+      console.log(`所有項目已 ${isChecked ? '全選' : '取消全選'}`);
+    },
+    // 獲取所有選中項目的 ID
+    getSelectedPersonIds() {
+      return this.persons
+        .filter(person => person.isSelected)
+        .map(person => person.id);
+    },
+    // 確認批量刪除
+    confirmBulkDelete() {
+      const selectedIds = this.getSelectedPersonIds();
+      if (selectedIds.length === 0) {
+        showAlert("請至少選擇一筆要刪除的資料。", "warning");
+        return;
+      }
+      // 使用原生 confirm 或自訂模態框
+      if (confirm(`您確定要刪除選定的 ${selectedIds.length} 筆個人資料嗎？此操作不可恢復！`)) {
+        this.bulkDeletePersons(selectedIds);
+      }
+    },
+    // 執行批量刪除的後端請求 (假設後端提供 /api/Persons/BulkDelete API)
+    async bulkDeletePersons(ids) {
+      this.isLoading = true;
+      this.errorMessage = "";
+      this.successMessage = "";
+
+      try {
+        const response = await fetch(`${this.backendApiUrl}/BulkDelete`, { // 假設 API 端點是 /api/Persons/BulkDelete
+          method: "POST", // 批量刪除通常使用 POST，因為會傳遞多個 ID
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ids), // 將 ID 陣列作為 JSON 傳遞
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `HTTP 錯誤! 狀態碼: ${response.status} - ${errorText}`
+          );
+        }
+
+        // 成功後重新載入資料
+        this.successMessage = `已成功刪除 ${ids.length} 筆選定的個人資料。`;
+        console.log(`成功刪除 ${ids.length} 筆個人資料。`);
+        this.fetchPersons(); // 重新獲取並顯示最新的列表
+        this.exitBatchDeleteMode(); // 刪除完成後自動退出批量刪除模式
+      } catch (error) {
+        console.error("批量刪除個人資料失敗:", error);
+        this.errorMessage = `批量刪除失敗: ${error.message}`;
+      } finally {
+        this.isLoading = false;
+        this.clearMessages();
+      }
+    },
+    canBulkDelete() {
+        return this.persons.some(person => person.isSelected);
     },
     // 執行搜尋的方法
     performSearch() {
