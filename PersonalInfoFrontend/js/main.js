@@ -22,7 +22,7 @@ const app = Vue.createApp({
       originalPersonData: null, // 儲存編輯前原始數據，方便比對
       searchQuery: "", // 搜尋字串
       currentPage: 1, // 當前頁碼，預設第一頁
-      pageSize: 5, // 每頁顯示資料筆數
+      pageSize: 10, // 每頁顯示資料筆數
       totalItems: 0, // 資料總筆數
       totalPages: 0, // 總頁數
       pageNumbers: [], // 渲染分頁按鈕的頁碼陣列
@@ -83,7 +83,7 @@ const app = Vue.createApp({
     },
     // 列印圖表功能
     printChart() {
-      alert("列印圖表功能待實現！");
+      window.print();
     },
     // 生成分頁按鈕
     generatePageNumber() {
@@ -408,7 +408,7 @@ const app = Vue.createApp({
 // 1. 性別分佈圖組件 (GenderChartComponent)
 const GenderChartComponent = {
     template: `
-        <div>
+        <div class="chart-container">
             <canvas ref="genderChartCanvas"></canvas>
             <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
                 載入性別分佈數據中...
@@ -520,7 +520,7 @@ const GenderChartComponent = {
 // 2. 年齡分佈圖組件 (AgeChartComponent)
 const AgeChartComponent = {
     template: `
-        <div>
+        <div class="chart-container">
             <canvas ref="ageChartCanvas"></canvas>
             <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
                 載入年齡分佈數據中...
@@ -634,7 +634,7 @@ const AgeChartComponent = {
 // 3. 趨勢分析圖組件 (TrendChartComponent)
 const MonthlyTrendChartComponent = {
     template: `
-        <div>
+        <div class="chart-container">
             <canvas ref="monthlyTrendChartCanvas"></canvas>
             <div v-if="!chartDataLoaded" class="text-center text-muted mt-3">
                 載入趨勢分析數據中...
@@ -732,12 +732,133 @@ const MonthlyTrendChartComponent = {
         }
     }
 };
+// 4.個人歷史紀錄
+const PersonHistoryComponent = {
+  template:
+  `<div class="container mt-4">
+            <h2>個人資料歷史版本列表</h2>
+            <button class="btn btn-outline-info mb-3" @click="printCurrentTable">
+                <i class="bi bi-printer-fill me-2"></i>列印列表
+            </button>
+
+            <div v-if="loading" class="text-center text-muted">載入中...</div>
+            <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
+            <div v-else-if="!additionalInfoList.length" class="alert alert-warning">沒有找到附加資訊。</div>
+            <div v-else>
+                <table class="table table-hover table-striped person-table" id="additionalInfoTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>姓名 (原)</th> <th>版本</th>
+                            <th>最後修改</th>
+                            <th>舊姓名</th>
+                            <th>舊 Email</th>
+                            <th>舊生日</th>
+                            <th>舊地址</th>
+                            <th>舊電話</th>
+                            <th>舊性別</th>
+                            <th>舊修改日期</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="info in additionalInfoList" :key="info.id">
+                            <td>{{ info.id }}</td>
+                            <td>{{ info.name }}</td> <td>{{ info.version }}</td>
+                            <td>{{ formatDateTime(info.lastModified) }}</td>
+                            <td>{{ info.oldName || '無' }}</td>
+                            <td>{{ info.oldEmail || '無' }}</td>
+                            <td>{{ info.oldDateOfBirth ? formatDate(info.oldDateOfBirth) : '無' }}</td>
+                            <td>{{ info.oldAddress || '無' }}</td>
+                            <td>{{ info.oldPhoneNumber || '無' }}</td>
+                            <td>{{ info.oldGender || '無' }}</td>
+                            <td>{{ info.oldModifiedDate ? formatDateTime(info.oldModifiedDate) : '無' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `,
+    data(){
+      return{
+        additionalInfoList: [],
+        loading: true,
+        error: null,
+        backendApiUrl:"http://localhost:5098/api/Persons",
+      }
+    },
+    mounted(){
+      this.fetchAdditionalInfo();
+    },
+    methods:{
+      async fetchAdditionalInfo() {
+        // 如果需要顯示姓名，你需要調用獲取所有人的 API，然後合併數據
+        // 或者擴展 PersonAdditionalInfoDTO 讓後端返回 Name
+        this.loading = true;
+        this.error = null;
+        try {
+          const response = await fetch (`${this.backendApiUrl}/AdditionalInfo`);
+          if(!response.ok){
+            throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
+          }
+          this.additionalInfoList = await response.json();
+        } catch(error){
+          this.error = `載入附加資訊失敗: ${error.message}`;
+          console.error(error);
+        } finally {
+          this.loading = false;
+        }
+      },
+      formatDate(dateString){
+        if(!dateString || dateString.startsWith('0001-01-01')){return 'N/A';}
+        return new Date(dateString).toLocaleDateString('zh-TW');
+      },
+      formatDateTime(dateTimeString){
+        if(!dateTimeString || dateTimeString.startsWith('0001-01-01')) {return 'N/A';}
+        const options = {year:'numeric', month:'2-digit',
+          day:'2-digit',
+          hour:'2-digit',
+          minute:'2-digit',
+          second:'2-digit',
+          hour12:false
+        };
+        return new Date(dateTimeString).toLocaleString('zh-TW', options);
+      },
+      printCurrentTable(){
+        // 列印邏輯與前面 main.js 中的 printList 類似
+        // 針對 #additionalInfoTable 進行列印
+
+        const printContentElement = document.getElementById('additionalInfoTable');
+        if(!printContentElement){
+          console.error("找不到要列印的內容");
+          return;
+        }
+
+        const printWindow = window.open('','_blank');
+        printWindow.document.write('<html><head><title>附加資訊列表</title>');
+        printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+        printWindow.document.write('<link href="css/style.css" rel="stylesheet">'); // 確保引入你的樣式表
+        printWindow.document.write('</head><body><div class="container mt-4">');
+        printWindow.document.write('<h2>個人資料歷史版本列表</h2>');
+        printWindow.document.write(printContentElement.outerHTML); // 使用 outerHTML 包含表格本身
+        printWindow.document.write('</div></body></html>');
+        printWindow.document.close();
+
+        printWindow.onload = () => {
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        };
+      }
+    }
+  }
+
 const routes = [
     { path: '/charts/gender', component: GenderChartComponent },
     { path: '/charts/age', component: AgeChartComponent },
     { path: '/charts/trend', component: MonthlyTrendChartComponent },
     // 當用戶訪問根路徑時，可以選擇重定向到一個默認圖表，或者顯示提示信息
     { path: '/', redirect: '/charts/gender' }, // 預設跳轉到性別分佈圖
+    {path: '/history', component:PersonHistoryComponent},
 ];
 const router = VueRouter.createRouter({
     history: VueRouter.createWebHashHistory(), // 使用 Hash 模式，在網址中會出現 #，適合靜態文件伺服

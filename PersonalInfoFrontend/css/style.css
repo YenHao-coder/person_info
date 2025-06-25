@@ -5,6 +5,10 @@ body {
     position: relative;
     padding-top: 20px; /* 給頂部的提示框預留一些空間，防止與標題重疊 */
 }
+.accordion-button{
+    font-size: 0.7em;
+    padding-left: 40%;
+}
 
 #alertPlaceholder {
     position: fixed;        /* 固定定位 */
@@ -38,3 +42,49 @@ body {
 
 /* 確保 alert 框本身的淡入淡出效果是 Bootstrap 預設的 */
 /* .alert.fade.show 是淡入，移除 show 類別會觸發淡出 */
+@media print{
+    #app {
+        width: auto !important; /* Allow app to use full print width */
+        margin: 0 !important; /* Remove margins */
+        padding: 0 !important; /* Remove padding */
+    }
+    .chart-container{
+        width: 100% !important;
+        height: auto !important; /* 讓高度根據長寬比自動調整 */
+        
+    }
+    .nav-item, #addPersonAccordion, #btnprint, #searchField, .alert-danger, #btnTableTbody{
+        display:none !important;
+    }
+    #pagination, #footer, #editPersonModal, .alert-warning, #btnTableThead{
+        display:none !important;
+    }
+    .card-header, .card-body{
+        border-width: 0px;
+    }
+    .table {
+        font-size: 0.8em; /* 縮小字體 */
+        border-collapse: collapse; /* 確保邊框合併 */
+        width: 100%;
+    }
+    .table th, .table td {
+        padding: 5px; /* 縮小單元格內邊距 */
+        border: 1px solid #dee2e6; /* 添加邊框以確保可見 */
+    }
+    canvas{
+        position: block;
+        max-width: 100%;
+        
+    }
+    table {
+        page-break-before: always; /* !!! 強制圖表從新的一頁開始 !!! */
+        page-break-inside: auto; /* 允許表格行在必要時跨頁斷開 */
+    }
+    table thead {
+        display: table-header-group; /* 在每個新頁面上重複表格標頭 */
+    }
+    table tr {
+        page-break-inside: avoid; /* 盡量保持行在一起 */
+        page-break-after: auto;
+    }
+}
