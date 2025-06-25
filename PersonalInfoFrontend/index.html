@@ -77,8 +77,8 @@
               :value="searchQuery"
               @input="searchQuery = $event.target.value"
             />
-            <span
-              ><button class="btn btn-secondary ms-2" @click="performSearch">
+            <span>
+              <button class="btn btn-secondary ms-2" @click="performSearch">
                 搜尋
               </button>
               <button
@@ -87,33 +87,201 @@
                 @click="clearSearch"
               >
                 清除
-              </button></span
+              </button>
+            </span
             >
+            <span v-if="!isBatchDeleteMode" class="ms-2">
+              <button
+                v-if="!isBatchAddMode"
+                class="btn btn-primary"
+                @click="enterBatchAddMode"
+              >
+                批量新增
+              </button>
+              <button
+                v-if="isBatchAddMode"
+                class="btn btn-secondary"
+                @click="exitBatchAddMode"
+              >
+                退出批量新增模式
+              </button>
+              <button
+                v-if="isBatchAddMode"
+                class="btn btn-success ms-2"
+                :disabled="isLoading"
+                @click="bulkAddPersons"
+              >
+                <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                {{ isLoading ? '提交中...' : '執行批量新增' }}
+              </button>
+            </span>
+            <span v-if="!isBatchAddMode" class="ms-2" >
+              <button 
+                v-if="!isBatchDeleteMode"
+                class="btn btn-outline-info"
+                @click="enterBatchDeleteMode"
+              >
+              批量刪除
+              </button>
+              <button
+                v-if="isBatchDeleteMode"
+                class="btn btn-secondary"
+                @click="exitBatchDeleteMode"
+              >
+                退出批量刪除模式
+              </button>
+              <button
+                v-if="isBatchDeleteMode"
+                class="btn btn-danger ms-2"
+                :disabled="!canBulkDelete()"
+                @click="confirmBulkDelete"
+              >
+                刪除選取項目 ({{ getSelectedPersonIds().length }})
+              </button>
+            </span>
+                      
           </div>
         </div>
       </div>
+
+      <div v-if="isBatchAddMode" class="batch-add-container">
+        <p class="text-muted">批量新增個人資料: 請填寫要新增的資料，最多可新增 {{ pageSize }} 筆。</p>
+        <div class="table-responsive">
+          <table class="table table-bordered batch-add-table">
+            <thead class="table-primary" >
+              <tr>
+                <th style="width: 30px">
+                  <button 
+                  class="btn btn-outline-primary"
+                  @click="addNewPersonRow"
+                  :disabled="!canAddMoreRows"
+                  >
+                  <i class="bi bi-plus-square-fill"></i></button></th>
+                <th>姓名 <span class="text-danger">*</span></th>
+                <th>Email <span class="text-danger">*</span></th>
+                <th>生日 <span class="text-danger">*</span></th>
+                <th>地址</th>
+                <th>電話</th>
+                <th>性別</th>
+                <th style="width: 80px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(person, index) in batchPersonsToAdd" :key="index">
+                <td>{{ index + 1 }}</td>
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :class="{ 'is-invalid': batchAddErrors[index].name }"
+                    v-model="person.name"
+                    @blur="validateBatchField(index, 'name')"
+                  />
+                  <div class="invalid-feedback">{{ batchAddErrors[index].name }}</div>
+                </td>
+                <td>
+                  <input
+                    type="email"
+                    class="form-control"
+                    :class="{ 'is-invalid': batchAddErrors[index].email }"
+                    v-model="person.email"
+                    @blur="validateBatchField(index, 'email')"
+                  />
+                  <div class="invalid-feedback">{{ batchAddErrors[index].email }}</div>
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    class="form-control"
+                    :class="{ 'is-invalid': batchAddErrors[index].dateOfBirth }"
+                    v-model="person.dateOfBirth"
+                    @blur="validateBatchField(index, 'dateOfBirth')"
+                  />
+                  <div class="invalid-feedback">{{ batchAddErrors[index].dateOfBirth }}</div>
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :class="{ 'is-invalid': batchAddErrors[index].address }"
+                    v-model="person.address"
+                    @blur="validateBatchField(index, 'address')"
+                  />
+                  <div class="invalid-feedback">{{ batchAddErrors[index].address }}</div>
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    :class="{ 'is-invalid': batchAddErrors[index].phoneNumber }"
+                    v-model="person.phoneNumber"
+                    @blur="validateBatchField(index, 'phoneNumber')"
+                  />
+                  <div class="invalid-feedback">{{ batchAddErrors[index].phoneNumber }}</div>
+                </td>
+                <td>
+                  <select
+                    class="form-select"
+                    :class="{ 'is-invalid': batchAddErrors[index].gender }"
+                    v-model="person.gender"
+                    @blur="validateBatchField(index, 'gender')"
+                  >
+                    <option value="">請選擇</option>
+                    <option value="男">男</option>
+                    <option value="女">女</option>
+                    <option value="其他">其他</option>
+                  </select>
+                  <div class="invalid-feedback">{{ batchAddErrors[index].gender }}</div>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-sm btn-outline-danger"
+                    @click="removePersonRow(index)"
+                    :disabled="batchPersonsToAdd.length === 1"
+                  >
+                    移除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-end mt-3">
+          
+        </div>
+      </div>
+        
       <div class="table-responstive" v-if="persons.length > 0">
         <table class="table table-striped table-bordered table-hover">
           <thead class="table-info">
             <tr>
+              <th v-if="isBatchDeleteMode" style="width: 50px">
+              <input type="checkbox" v-model="isAllSelected" />
+              </th>
               <th>姓名</th>
               <th>性別</th>
               <th>生日</th>
               <th>地址</th>
               <th>Email</th>
               <th>電話</th>
-              <th id="btnTableThead">操作</th>
+              <th id="btnTableThead" v-if="!isBatchDeleteMode">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="person in persons" :key="person.id">
+            <tr v-for="person in persons" :key="person.id" :class="{ 'table-primary': person.isSelected && isBatchDeleteMode }">
+              <td v-if="isBatchDeleteMode">
+                <input
+                  type="checkbox"
+                  v-model="person.isSelected"
+                />
+              </td>
               <td>{{person.name}}</td>
               <td>{{person.gender || '無'}}</td>
               <td>{{formatDate(person.dateOfBirth)}}</td>
               <td>{{person.address || '無'}}</td>
               <td>{{person.email}}</td>
               <td>{{person.phoneNumber || '無'}}</td>
-              <td id="btnTableTbody">
+              <td id="btnTableTbody" v-if="!isBatchDeleteMode">
                 <button
                   class="btn btn-sm btn-outline-info me-2"
                   @click="viewPerson(person)"
@@ -144,11 +312,11 @@
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingAddPerson">
             <button
-              class="accordion-button bg-primary text-white"
+              class="accordion-button bg-info text-white collapsed"
               type="button"
               data-bs-toggle="collapse"
               data-bs-target="#collapseAddPerson"
-              aria-expanded="true"
+              aria-expanded="false"
               aria-controls="collapseAddPerson"
             >
               + 新增一筆 。。。
@@ -286,6 +454,7 @@
           </div>
         </div>
       </div>
+      
       
       <div v-if="isLoadingData" class="text-center mt-3">
         <div class="spinner-border text-primary" role="status">
@@ -464,9 +633,13 @@
             </div>
           </div>
         </div>
-        </div>
-        <div class="d-flex justify-content-center mt-3">
-          <nav aria-label="Page navigation example">
+      </div>
+
+      
+  
+
+      <div class="d-flex justify-content-center mt-3">
+          <nav aria-label="Page navigation example" v-if="!isBatchDeleteMode || !isBatchAddMode">
             <ul class="pagination" id="pagination">
               <li class="page-item" :class="{'disabled':currentPage === 1}">
                 <a

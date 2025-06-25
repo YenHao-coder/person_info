@@ -45,6 +45,11 @@ const app = Vue.createApp({
         gender: "",
       },
       isBatchDeleteMode: false, // 標誌是否處於批量刪除模式
+      isBatchAddMode: false, // 標誌是否處於批量新增模式
+      // 每個元素都是一個 Person 物件，包含 isError 和 errorDetails
+      batchPersonsToAdd: [],
+      // 儲存批量新增表單的驗證錯誤
+      batchAddErrors: [], // 預計是一個陣列，每個元素對應 batchPersonsToAdd 的一個物件，包含該行所有欄位的錯誤訊息
     };
   },
   methods: {
@@ -79,7 +84,7 @@ const app = Vue.createApp({
         // 如果已經在批量刪除模式，則保持之前的 isSelected 狀態
         // 否則，初始化為 false
         return { ...person, isSelected: this.isBatchDeleteMode ? (person.isSelected || false) : false };
-        });; // 從 response.items 獲取實際的資料陣列
+        });
 
         this.totalItems = data.totalCount || 0;
         this.totalPages = data.totalPages || 0;
@@ -155,6 +160,7 @@ const app = Vue.createApp({
 
       if (!this.validateAllFields('newPerson')) {
         showAlert("請檢查表單中的錯誤，並完成必填項目","danger");
+        this.isLoading = false;
         return;
       }
 
@@ -524,8 +530,8 @@ const app = Vue.createApp({
       console.log(`Person ${person.id} selection: ${person.isSelected}`);
     },
     // 全選/取消全選當前頁面所有項目
-    toggleSelectAll(event) {
-      const isChecked = event.target.checked;
+    toggleSelectAll() {
+      const newSelectedState = !this.isAllSelected;
       this.persons.forEach(person => {
         if (!person.hasOwnProperty('isSelected')) {
           Vue.set(person, 'isSelected', isChecked);
@@ -587,7 +593,7 @@ const app = Vue.createApp({
       }
     },
     canBulkDelete() {
-        return this.persons.some(person => person.isSelected);
+        return this.isAnySelected;
     },
     // 執行搜尋的方法
     performSearch() {
@@ -601,6 +607,232 @@ const app = Vue.createApp({
       this.searchQuery = ""; // 清空搜尋輸入框綁定的值
       this.currentPage = 1;
       this.fetchPersons(); //獲取所有資料
+    },
+    // 進入批量新增模式
+    enterBatchAddMode() {
+      this.isBatchAddMode = true;
+      this.isBatchDeleteMode = false; // 確保退出批量刪除模式
+      this.batchPersonsToAdd = []; // 清空之前的批量新增數據
+      this.batchAddErrors = []; // 清空之前的錯誤訊息
+      this.addNewPersonRow(); // 預設新增一行空白行
+      this.clearMessages();
+      showAlert("已進入批量新增模式，請填寫要新增的資料。", "info");
+      console.log("進入批量新增模式");
+    },
+    // 退出批量新增模式
+    exitBatchAddMode() {
+      this.isBatchAddMode = false;
+      this.batchPersonsToAdd = []; // 清空所有資料
+      this.batchAddErrors = []; // 清空所有錯誤訊息
+      this.clearMessages();
+      showAlert("已退出批量新增模式。", "info");
+      console.log("退出批量新增模式");
+    },
+    // 向批量新增表單添加一行空白資料
+    addNewPersonRow() {
+      if (this.canAddMoreRows) {
+        const newPersonTemplate = {
+          name: "",
+          email: "",
+          dateOfBirth: "",
+          address: "",
+          phoneNumber: "",
+          gender: "",
+          // 為每一行新增一個 isError 標誌，以及一個 errorDetails 物件
+          // isError: false,
+          // errorDetails: { name: "", email: "", dateOfBirth: "", address: "", phoneNumber: "", gender: "" }
+        };
+        this.batchPersonsToAdd.push(newPersonTemplate);
+        // 同時為新行添加一個對應的錯誤物件
+        this.batchAddErrors.push({ name: "", email: "", dateOfBirth: "", address: "", phoneNumber: "", gender: "" });
+        console.log("新增一行空白資料。");
+      } else {
+        showAlert(`最多只能新增 ${this.pageSize} 筆資料。`, "warning");
+      }
+    },
+    // 從批量新增表單移除指定行的資料
+    removePersonRow(index) {
+      if (this.batchPersonsToAdd.length > 1) { // 至少保留一行
+        this.batchPersonsToAdd.splice(index, 1);
+        this.batchAddErrors.splice(index, 1); // 同時移除對應的錯誤物件
+        console.log(`移除第 ${index + 1} 行資料。`);
+      } else {
+        showAlert("至少需要保留一筆資料進行填寫。", "warning");
+      }
+    },
+    // 驗證批量新增的單筆資料
+    validateBatchField(index, field) {
+        const targetObject = this.batchPersonsToAdd[index];
+        const errorObject = this.batchAddErrors[index];
+
+        errorObject[field] = ""; // 先清除該欄位的錯誤訊息
+
+        switch (field) {
+            case "name":
+                if (!targetObject.name) {
+                    errorObject.name = "姓名為必填。";
+                } else if (targetObject.name.length < 2) {
+                    errorObject.name = "姓名至少需要2個字。";
+                }
+                break;
+            case "email":
+                if (!targetObject.email) {
+                    errorObject.email = "Email 為必填。";
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetObject.email)) {
+                    errorObject.email = "請輸入有效的 Email 格式。";
+                }
+                break;
+            case "dateOfBirth":
+                if (!targetObject.dateOfBirth) {
+                    errorObject.dateOfBirth = "生日為必填。";
+                } else {
+                    const today = new Date();
+                    const dob = new Date(targetObject.dateOfBirth);
+                    if (dob > today) {
+                        errorObject.dateOfBirth = "生日不能晚於今天。";
+                    }
+                }
+                break;
+            case "address":
+                if (targetObject.address && targetObject.address.length > 100) {
+                    errorObject.address = "地址長度不能超過100個字。";
+                }
+                break;
+            case "phoneNumber":
+                if (targetObject.phoneNumber && !/^[0]{1}[9]{1}[0-9]{8}$/.test(targetObject.phoneNumber)) {
+                    errorObject.phoneNumber = "電話號碼格式不正確。";
+                } else if (targetObject.phoneNumber && targetObject.phoneNumber.length < 10) {
+                    errorObject.phoneNumber = "電話號碼至少需要10位數。";
+                }
+                break;
+            case "gender":
+                if (targetObject.gender && !['男', '女', '其他', ''].includes(targetObject.gender)) {
+                    errorObject.gender = "請選擇有效的性別。";
+                }
+                break;
+        }
+        // 返回驗證結果 (是否有錯誤)
+        return Object.values(errorObject).every(msg => msg === "");
+    },
+    // 驗證批量新增表單中的所有欄位
+    validateAllBatchFields() {
+        let allValid = true;
+        // 清除所有現有的批量新增錯誤訊息
+        this.batchAddErrors.forEach(errorObject => {
+            for (const key in errorObject) {
+                errorObject[key] = "";
+            }
+        });
+
+        this.batchPersonsToAdd.forEach((person, index) => {
+            // 對每一筆資料的每個欄位進行驗證
+            if (!this.validateBatchField(index, "name")) allValid = false;
+            if (!this.validateBatchField(index, "email")) allValid = false;
+            if (!this.validateBatchField(index, "dateOfBirth")) allValid = false;
+            if (!this.validateBatchField(index, "address")) allValid = false;
+            if (!this.validateBatchField(index, "phoneNumber")) allValid = false;
+            if (!this.validateBatchField(index, "gender")) allValid = false;
+        });
+
+        // 檢查是否有完全空白的行，如果所有欄位都為空，則不算作有效行
+        const nonBlankRows = this.batchPersonsToAdd.filter(person => {
+            return Object.values(person).some(value => value !== "" && value !== null);
+        });
+
+        if (nonBlankRows.length === 0) {
+            showAlert("請至少填寫一筆完整的資料。", "warning");
+            allValid = false;
+        }
+
+        return allValid;
+    },
+    // 執行批量新增的後端請求
+    async bulkAddPersons() {
+      this.isLoading = true;
+      this.errorMessage = "";
+      this.successMessage = "";
+
+      // 執行客戶端驗證
+      if (!this.validateAllBatchFields()) {
+        showAlert("請檢查批量新增表單中的錯誤，並完成必填項目。", "danger");
+        this.isLoading = false;
+        return;
+      }
+
+      // 過濾掉完全空白的行（如果用戶新增了多行但沒填寫）
+      const validPersonsToSubmit = this.batchPersonsToAdd.filter(person => {
+          return Object.values(person).some(value => value !== "" && value !== null);
+      });
+
+      if (validPersonsToSubmit.length === 0) {
+          showAlert("沒有有效的資料可以提交。請填寫至少一筆資料。", "warning");
+          this.isLoading = false;
+          return;
+      }
+
+      try {
+        const response = await fetch(`${this.backendApiUrl}/BulkCreate`, { // 假設 API 端點是 /api/Persons/BulkAdd
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(validPersonsToSubmit), // 將 Person 物件陣列作為 JSON 傳遞
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `HTTP 錯誤! 狀態碼: ${response.status} - ${errorText}`
+          );
+        }
+
+        // 後端可能會返回新增成功的筆數或新增的資料列表
+        const result = await response.json(); // 假設後端返回 { message: "...", addedCount: X }
+
+        this.successMessage = `成功新增 ${result.addedCount || validPersonsToSubmit.length} 筆個人資料。`;
+        console.log(`成功批量新增 ${result.addedCount || validPersonsToSubmit.length} 筆個人資料。`);
+
+        this.fetchPersons(); // 重新獲取並顯示最新的列表
+        this.exitBatchAddMode(); // 批量新增完成後自動退出模式
+        window.scrollTo(0, 0); // 回到頂端
+      } catch (error) {
+        console.error("批量新增個人資料失敗:", error);
+        this.errorMessage = `批量新增失敗: ${error.message}`;
+      } finally {
+        this.isLoading = false;
+        this.clearMessages();
+      }
+    },
+
+
+  },
+  computed:{
+    isAllSelected: {
+        get() {
+            // 只有在批量刪除模式下才進行判斷，且列表不為空
+            return (
+                this.isBatchDeleteMode &&
+                this.persons.length > 0 &&
+                this.persons.every((person) => person.isSelected)
+            );
+        },
+        set(value) {
+            // 當全選 checkbox 被勾選或取消勾選時，更新所有 person 的 isSelected 狀態
+            this.persons.forEach(person => {
+                if (!person.hasOwnProperty('isSelected')) {
+                    Vue.set(person, 'isSelected', value);
+                } else {
+                    person.isSelected = value;
+                }
+            });
+            console.log(`所有項目已 ${value ? '全選' : '取消全選'}`);
+        }
+    },
+    // 判斷是否選取待刪除 (至少1筆)
+    isAnySelected() {
+      return this.persons.some((person) => person.isSelected);
+    },
+    // 判斷是否達到最大新增數量 (10筆)
+    canAddMoreRows() {
+      return this.batchPersonsToAdd.length < this.pageSize;
     },
   },
   // 在組件掛載後立即調用 fetchPersons 方法
