@@ -10,11 +10,19 @@
       integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
       crossorigin="anonymous"
     />
+    <link href="css/theme.bootstrap_4.min.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     />
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+    <script type="text/javascript" src="jquery.tablesorter.min.js"></script>
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
   </head>
   <body>
     <div id="alertPlaceholder"></div>
@@ -51,10 +59,16 @@
               >
             </li>
             <li class="nav-item" role="presentation">
-              <router-link to="/history" class="nav-link" active-class="active">修改版本</router-link>
+              <router-link to="/history" class="nav-link" active-class="active"
+                >修改版本</router-link
+              >
             </li>
           </ul>
-          <button class="btn btn-outline-primary ms-auto" @click="printChart" id="btnprint">
+          <button
+            class="btn btn-outline-primary ms-auto"
+            @click="printChart"
+            id="btnprint"
+          >
             <i class="bi bi-printer"></i> 列印
           </button>
         </div>
@@ -66,9 +80,10 @@
           </div>
         </div>
       </div>
-      
+
       <div class="row mb-3" id="searchField">
-        <div class="col-md-6">
+        <div class="col-md-3"></div>
+        <div class="col-md-6 justify-content-end">
           <div class="input-group">
             <input
               type="text"
@@ -78,32 +93,31 @@
               @input="searchQuery = $event.target.value"
             />
             <span>
-              <button class="btn btn-secondary ms-2" @click="performSearch">
-                搜尋
+              <button class="btn btn-secondary ms-3" @click="performSearch">
+                <i class="bi bi-search"></i>
               </button>
               <button
-                class="btn btn-outline-secondary ms-2"
+                class="btn btn-outline-secondary ms-3"
                 type="button"
                 @click="clearSearch"
               >
                 清除
               </button>
-            </span
-            >
-            <span v-if="!isBatchDeleteMode" class="ms-2">
+            </span>
+            <span v-if="!isBatchDeleteMode" class="ms-3">
               <button
                 v-if="!isBatchAddMode"
-                class="btn btn-primary"
+                class="btn btn-outline-info"
                 @click="enterBatchAddMode"
               >
-                批量新增
+                <i class="bi bi-database-fill-add"></i>
               </button>
               <button
                 v-if="isBatchAddMode"
                 class="btn btn-secondary"
                 @click="exitBatchAddMode"
               >
-                退出批量新增模式
+                <i class="bi bi-escape"></i>
               </button>
               <button
                 v-if="isBatchAddMode"
@@ -111,24 +125,29 @@
                 :disabled="isLoading"
                 @click="bulkAddPersons"
               >
-                <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                {{ isLoading ? '提交中...' : '執行批量新增' }}
+                <span
+                  v-if="isLoading"
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                {{ isLoading ? '提交中...' : '批量新增' }}
               </button>
             </span>
-            <span v-if="!isBatchAddMode" class="ms-2" >
-              <button 
+            <span v-if="!isBatchAddMode" class="ms-3">
+              <button
                 v-if="!isBatchDeleteMode"
-                class="btn btn-outline-info"
+                class="btn btn-outline-danger"
                 @click="enterBatchDeleteMode"
               >
-              批量刪除
+                <i class="bi bi-person-x-fill"></i>
               </button>
               <button
                 v-if="isBatchDeleteMode"
                 class="btn btn-secondary"
                 @click="exitBatchDeleteMode"
               >
-                退出批量刪除模式
+                <i class="bi bi-escape"></i>
               </button>
               <button
                 v-if="isBatchDeleteMode"
@@ -136,27 +155,30 @@
                 :disabled="!canBulkDelete()"
                 @click="confirmBulkDelete"
               >
-                刪除選取項目 ({{ getSelectedPersonIds().length }})
+                刪除選取 ({{ getSelectedPersonIds().length }})
               </button>
             </span>
-                      
           </div>
         </div>
       </div>
 
       <div v-if="isBatchAddMode" class="batch-add-container">
-        <p class="text-muted">批量新增個人資料: 請填寫要新增的資料，最多可新增 {{ pageSize }} 筆。</p>
+        <p class="text-muted">
+          批量新增個人資料: 請填寫要新增的資料，最多可新增 {{ pageSize }} 筆。
+        </p>
         <div class="table-responsive">
           <table class="table table-bordered batch-add-table">
-            <thead class="table-primary" >
+            <thead class="table-primary">
               <tr>
                 <th style="width: 30px">
-                  <button 
-                  class="btn btn-outline-primary"
-                  @click="addNewPersonRow"
-                  :disabled="!canAddMoreRows"
+                  <button
+                    class="btn btn-outline-primary"
+                    @click="addNewPersonRow"
+                    :disabled="!canAddMoreRows"
                   >
-                  <i class="bi bi-plus-square-fill"></i></button></th>
+                    <i class="bi bi-plus-square-fill"></i>
+                  </button>
+                </th>
                 <th>姓名 <span class="text-danger">*</span></th>
                 <th>Email <span class="text-danger">*</span></th>
                 <th>生日 <span class="text-danger">*</span></th>
@@ -177,7 +199,9 @@
                     v-model="person.name"
                     @blur="validateBatchField(index, 'name')"
                   />
-                  <div class="invalid-feedback">{{ batchAddErrors[index].name }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].name }}
+                  </div>
                 </td>
                 <td>
                   <input
@@ -187,7 +211,9 @@
                     v-model="person.email"
                     @blur="validateBatchField(index, 'email')"
                   />
-                  <div class="invalid-feedback">{{ batchAddErrors[index].email }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].email }}
+                  </div>
                 </td>
                 <td>
                   <input
@@ -197,7 +223,9 @@
                     v-model="person.dateOfBirth"
                     @blur="validateBatchField(index, 'dateOfBirth')"
                   />
-                  <div class="invalid-feedback">{{ batchAddErrors[index].dateOfBirth }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].dateOfBirth }}
+                  </div>
                 </td>
                 <td>
                   <input
@@ -207,7 +235,9 @@
                     v-model="person.address"
                     @blur="validateBatchField(index, 'address')"
                   />
-                  <div class="invalid-feedback">{{ batchAddErrors[index].address }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].address }}
+                  </div>
                 </td>
                 <td>
                   <input
@@ -217,7 +247,9 @@
                     v-model="person.phoneNumber"
                     @blur="validateBatchField(index, 'phoneNumber')"
                   />
-                  <div class="invalid-feedback">{{ batchAddErrors[index].phoneNumber }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].phoneNumber }}
+                  </div>
                 </td>
                 <td>
                   <select
@@ -231,7 +263,9 @@
                     <option value="女">女</option>
                     <option value="其他">其他</option>
                   </select>
-                  <div class="invalid-feedback">{{ batchAddErrors[index].gender }}</div>
+                  <div class="invalid-feedback">
+                    {{ batchAddErrors[index].gender }}
+                  </div>
                 </td>
                 <td>
                   <button
@@ -239,41 +273,156 @@
                     @click="removePersonRow(index)"
                     :disabled="batchPersonsToAdd.length === 1"
                   >
-                    移除
+                    <i class="bi bi-person-x-fill"></i>
                   </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div class="d-flex justify-content-end mt-3">
-          
-        </div>
+        <div class="d-flex justify-content-end mt-3"></div>
       </div>
-        
+
       <div class="table-responstive" v-if="persons.length > 0">
-        <table class="table table-striped table-bordered table-hover">
+        <table
+          class="table table-striped table-bordered table-hover tablesorter"
+          id="personTable"
+        >
           <thead class="table-info">
             <tr>
               <th v-if="isBatchDeleteMode" style="width: 50px">
-              <input type="checkbox" v-model="isAllSelected" />
+                <input type="checkbox" v-model="isAllSelected" />
               </th>
-              <th>姓名</th>
-              <th>性別</th>
-              <th>生日</th>
-              <th>地址</th>
-              <th>Email</th>
-              <th>電話</th>
+              <th
+          data-sort-by="name"
+          class="sortable"
+          @click="toggleSort('name')"
+          :class="{
+            'asc': currentSortBy === 'name' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'name' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('name')"
+        >
+          姓名
+          <span v-if="currentSortBy === 'name'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i> <!-- 預設顯示雙向箭頭 -->
+          </span>
+        </th>
+        <!-- 性別標頭 - 新增 @click 事件和動態 class/icon -->
+        <th
+          data-sort-by="gender"
+          class="sortable"
+          @click="toggleSort('gender')"
+          :class="{
+            'asc': currentSortBy === 'gender' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'gender' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('gender')"
+        >
+          性別
+          <span v-if="currentSortBy === 'gender'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i>
+          </span>
+        </th>
+        <!-- 生日標頭 - 新增 @click 事件和動態 class/icon -->
+        <th
+          data-sort-by="dateOfBirth"
+          class="sortable"
+          @click="toggleSort('dateOfBirth')"
+          :class="{
+            'asc': currentSortBy === 'dateOfBirth' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'dateOfBirth' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('dateOfBirth')"
+        >
+          生日
+          <span v-if="currentSortBy === 'dateOfBirth'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i>
+          </span>
+        </th>
+        <!-- 地址標頭 - 新增 @click 事件和動態 class/icon -->
+        <th
+          data-sort-by="address"
+          class="sortable"
+          @click="toggleSort('address')"
+          :class="{
+            'asc': currentSortBy === 'address' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'address' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('address')"
+        >
+          地址
+          <span v-if="currentSortBy === 'address'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i>
+          </span>
+        </th>
+        <!-- Email 標頭 - 新增 @click 事件和動態 class/icon -->
+        <th
+          data-sort-by="email"
+          class="sortable"
+          @click="toggleSort('email')"
+          :class="{
+            'asc': currentSortBy === 'email' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'email' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('email')"
+        >
+          Email
+          <span v-if="currentSortBy === 'email'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i>
+          </span>
+        </th>
+        <!-- 電話標頭 - 新增 @click 事件和動態 class/icon -->
+        <th
+          data-sort-by="phoneNumber"
+          class="sortable"
+          @click="toggleSort('phoneNumber')"
+          :class="{
+            'asc': currentSortBy === 'phoneNumber' && currentSortOrder === 'asc',
+            'desc': currentSortBy === 'phoneNumber' && currentSortOrder === 'desc'
+          }" :title="getSortTooltip('phoneNumber')"
+        >
+          電話
+          <span v-if="currentSortBy === 'phoneNumber'" class="sort-icon">
+            <i :class="{
+                'bi bi-arrow-up': currentSortOrder === 'asc',
+                'bi bi-arrow-down': currentSortOrder === 'desc'
+            }"></i>
+          </span><span v-else class="sort-icon sort-icon-hover">
+            <i class="bi bi-arrow-up-down"></i>
+          </span>
+        </th>
               <th id="btnTableThead" v-if="!isBatchDeleteMode">操作</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="person in persons" :key="person.id" :class="{ 'table-primary': person.isSelected && isBatchDeleteMode }">
+          <tbody id="personList">
+            <tr
+              v-for="person in sortedPersons"
+              :key="person.id"
+              :class="{ 'table-primary': person.isSelected && isBatchDeleteMode }"
+            >
               <td v-if="isBatchDeleteMode">
-                <input
-                  type="checkbox"
-                  v-model="person.isSelected"
-                />
+                <input type="checkbox" v-model="person.isSelected" />
               </td>
               <td>{{person.name}}</td>
               <td>{{person.gender || '無'}}</td>
@@ -286,21 +435,21 @@
                   class="btn btn-sm btn-outline-info me-2"
                   @click="viewPerson(person)"
                 >
-                  查看
+                  <i class="bi bi-window"></i>
                 </button>
                 <button
                   class="btn btn-sm btn-outline-warning me-2"
                   @click="editPerson(person)"
                 >
-                  編輯
+                  <i class="bi bi-pencil-square"></i>
                 </button>
                 <button
-                  class="btn btn-sm btn-danger me-2"
+                  class="btn btn-sm btn-outline-danger me-2"
                   @click="confirmDelete(person.id)"
                 >
-                  刪除
+                  <i class="bi bi-person-x-fill"></i>
                 </button>
-              </td>              
+              </td>
             </tr>
           </tbody>
         </table>
@@ -319,7 +468,7 @@
               aria-expanded="false"
               aria-controls="collapseAddPerson"
             >
-              + 新增一筆 。。。
+              <i class="bi bi-person-lines-fill pe-3"></i> New Person
             </button>
           </h2>
           <div
@@ -340,8 +489,11 @@
                       name="name"
                       id="name"
                       class="form-control"
-                      v-model="newPerson.name" @input="validateField('newPerson', 'name')" :class="{'is-invalid': errors.name}" />
-                      <div class="invalid-feedback" v-if="errors.name">
+                      v-model="newPerson.name"
+                      @input="validateField('newPerson', 'name')"
+                      :class="{'is-invalid': errors.name}"
+                    />
+                    <div class="invalid-feedback" v-if="errors.name">
                       {{ errors.name }}
                     </div>
                   </div>
@@ -374,8 +526,9 @@
                       class="form-control"
                       :class="{'is-invalid': errors.dateOfBirth}"
                       v-model="newPerson.dateOfBirth"
-                      @input="validateField('newPerson', 'dateOfBirth')"/>
-                      <div class="invalid-feedback" v-if="errors.dateOfBirth">
+                      @input="validateField('newPerson', 'dateOfBirth')"
+                    />
+                    <div class="invalid-feedback" v-if="errors.dateOfBirth">
                       {{ errors.dateOfBirth }}
                     </div>
                   </div>
@@ -388,8 +541,9 @@
                       class="form-control"
                       :class="{'is-invalid': errors.address}"
                       v-model="newPerson.address"
-                      @input="validateField('newPerson', 'address')"/>
-                      <div class="invalid-feedback" v-if="errors.address">
+                      @input="validateField('newPerson', 'address')"
+                    />
+                    <div class="invalid-feedback" v-if="errors.address">
                       {{ errors.address }}
                     </div>
                   </div>
@@ -402,8 +556,9 @@
                       class="form-control"
                       :class="{'is-invalid': errors.phoneNumber}"
                       v-model="newPerson.phoneNumber"
-                      @input="validateField('newPerson', 'phoneNumber')"/>
-                      <div class="invalid-feedback" v-if="errors.phoneNumber">
+                      @input="validateField('newPerson', 'phoneNumber')"
+                    />
+                    <div class="invalid-feedback" v-if="errors.phoneNumber">
                       {{ errors.phoneNumber }}
                     </div>
                   </div>
@@ -439,13 +594,13 @@
                         role="status"
                         aria-hidden="true"
                       ></span
-                      >{{ isLoading? 'loading' : 'Add'}}</button
+                      >{{ isLoading? 'loading' : 'add'}}</button
                     ><button
                       type="button"
                       class="btn btn-outline-info"
                       @click="resetForm"
                     >
-                      Reset
+                      <i class="bi bi-escape"></i>
                     </button>
                   </div>
                 </div>
@@ -454,8 +609,7 @@
           </div>
         </div>
       </div>
-      
-      
+
       <div v-if="isLoadingData" class="text-center mt-3">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -503,8 +657,9 @@
                       id="editName"
                       :class="{'is-invalid': editErrors.name}"
                       v-model="editingPerson.name"
-                      @input="validateField('editingPerson', 'name')"/>
-                      <div class="invalid-feedback" v-if="editErrors.name">
+                      @input="validateField('editingPerson', 'name')"
+                    />
+                    <div class="invalid-feedback" v-if="editErrors.name">
                       {{ editErrors.name }}
                     </div>
                   </div>
@@ -518,10 +673,11 @@
                       id="editEmail"
                       :class="{'is-invalid': editErrors.email}"
                       v-model="editingPerson.email"
-                      @input="validateField('editingPerson', 'email')"/>
-                      <div class="invalid-feedback" v-if="editErrors.email">
+                      @input="validateField('editingPerson', 'email')"
+                    />
+                    <div class="invalid-feedback" v-if="editErrors.email">
                       {{ editErrors.email }}
-                    </div>                    
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="editDateOfBirth" class="form-label"
@@ -533,10 +689,11 @@
                       id="editDateOfBirth"
                       :class="{'is-invalid': editErrors.dateOfBirth}"
                       v-model="editingPerson.dateOfBirth"
-                      @input="validateField('editingPerson', 'dateOfBirth')"/><div class="invalid-feedback" v-if="editErrors.dateOfBirth">
+                      @input="validateField('editingPerson', 'dateOfBirth')"
+                    />
+                    <div class="invalid-feedback" v-if="editErrors.dateOfBirth">
                       {{ editErrors.dateOfBirth }}
                     </div>
-                      
                   </div>
                   <div class="col-md-6">
                     <label for="editAddress" class="form-label">地址</label>
@@ -546,10 +703,11 @@
                       id="editAddress"
                       :class="{'is-invalid': editErrors.address}"
                       v-model="editingPerson.address"
-                      @input="validateField('editingPerson', 'address')"/><div class="invalid-feedback" v-if="editErrors.address">
+                      @input="validateField('editingPerson', 'address')"
+                    />
+                    <div class="invalid-feedback" v-if="editErrors.address">
                       {{ editErrors.address }}
                     </div>
-                      
                   </div>
                   <div class="col-md-6">
                     <label for="editPhoneNumber" class="form-label">電話</label>
@@ -560,9 +718,10 @@
                       :class="{'is-invalid': editErrors.phoneNumber}"
                       v-model="editingPerson.phoneNumber"
                       @input="validateField('editingPerson', 'phoneNumber')"
-                    /><div class="invalid-feedback" v-if="editErrors.phoneNumber">
+                    />
+                    <div class="invalid-feedback" v-if="editErrors.phoneNumber">
                       {{ editErrors.phoneNumber }}
-                  </div>                 
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label for="editGender" class="form-label">性別</label>
@@ -571,7 +730,8 @@
                       id="editGender"
                       :class="{'is-invalid': editErrors.gender}"
                       v-model="editingPerson.gender"
-                      @change="validateField('editingPerson', 'gender')">
+                      @change="validateField('editingPerson', 'gender')"
+                    >
                       <option value="">請選擇</option>
                       <option value="男">男</option>
                       <option value="女">女</option>
@@ -613,7 +773,7 @@
                 data-bs-dismiss="modal"
                 @click="cancelEdit"
               >
-                取消
+                <i class="bi bi-escape"></i>
               </button>
               <button
                 type="submit"
@@ -635,45 +795,47 @@
         </div>
       </div>
 
-      
-  
-
       <div class="d-flex justify-content-center mt-3">
-          <nav aria-label="Page navigation example" v-if="!isBatchDeleteMode || !isBatchAddMode">
-            <ul class="pagination" id="pagination">
-              <li class="page-item" :class="{'disabled':currentPage === 1}">
-                <a
-                  href="#"
-                  class="page-link"
-                  @click.prevent="goToPage(currentPage - 1)"
-                  >prev</a
-                >
-              </li>
-              <li
-                class="page-item"
-                v-for="page in pageNumbers"
-                :key="page"
-                :class="{'active' : page === currentPage }"
+        <nav
+          aria-label="Page navigation example"
+          v-if="!isBatchDeleteMode || !isBatchAddMode"
+        >
+          <ul class="pagination" id="pagination">
+            <li class="page-item" :class="{'disabled':currentPage === 1}">
+              <a
+                href="#"
+                class="page-link"
+                @click.prevent="goToPage(currentPage - 1)"
+                >prev</a
               >
-                <a href="#" class="page-link" @click.prevent="goToPage(page)"
-                  >{{ page }}</a
-                >
-              </li>
-              <li
-                class="page-item"
-                :class="{'disabled':currentPage === totalPages || totalPages === 0}"
+            </li>
+            <li
+              class="page-item"
+              v-for="page in pageNumbers"
+              :key="page"
+              :class="{'active' : page === currentPage }"
+            >
+              <a href="#" class="page-link" @click.prevent="goToPage(page)"
+                >{{ page }}</a
               >
-                <a
-                  href="#"
-                  class="page-link"
-                  @click.prevent="goToPage(currentPage + 1)"
-                  >next</a
-                >
-              </li>
-            </ul>
-          </nav>
+            </li>
+            <li
+              class="page-item"
+              :class="{'disabled':currentPage === totalPages || totalPages === 0}"
+            >
+              <a
+                href="#"
+                class="page-link"
+                @click.prevent="goToPage(currentPage + 1)"
+                >next</a
+              >
+            </li>
+          </ul>
+        </nav>
       </div>
-      <p class="text-muted text-center mt-5" id="footer">前端基礎結構已準備就緒。</p>
+      <p class="text-muted text-center mt-5" id="footer">
+        前端基礎結構已準備就緒。
+      </p>
     </div>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/vue-router@4"></script>
@@ -684,11 +846,16 @@
       crossorigin="anonymous"
     ></script>
 
-    <script
-      src="https://code.jquery.com/jquery-3.7.1.min.js"
-      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-      crossorigin="anonymous"
-    ></script>
     <script src="js/main.js"></script>
+    <script>
+      $(function () {
+        $("#personTable").tablesorter({
+          sortList: [
+            [0, 0],
+            [1, 0],
+          ],
+        });
+      });
+    </script>
   </body>
 </html>

@@ -53,7 +53,7 @@ body {
         height: auto !important; /* 讓高度根據長寬比自動調整 */
         
     }
-    .nav-item, #addPersonAccordion, #btnprint, #searchField, .alert-danger, #btnTableTbody{
+    .nav-item, #addPersonAccordion, #btnprint, #searchField, .alert-danger, #btnTableTbody, .sort-icon{
         display:none !important;
     }
     #pagination, #footer, #editPersonModal, .alert-warning, #btnTableThead{
@@ -87,4 +87,54 @@ body {
         page-break-inside: avoid; /* 盡量保持行在一起 */
         page-break-after: auto;
     }
+}
+.sortable {
+    cursor: pointer;
+    position: relative; /* 定位 sort-icon 的基礎 */
+    white-space: nowrap; /* 防止標頭文字和圖標換行 */
+    padding-right: 20px; /* 為箭頭圖標預留空間 */
+    transition: background-color 0.2s ease-in-out; /* 新增：背景色過渡效果 */
+}
+.sortable:hover {
+    background-color: rgba(6, 109, 119, 0.122); /* 淺色浮現 */
+}
+
+/* 預設的 sort-icon 樣式 */
+.sortable .sort-icon {
+    display: inline-block;
+    width: 12px; /* 箭頭圖標的寬度 */
+    height: 12px; /* 箭頭圖標的高度 */
+    margin-left: 5px; /* 圖標與文字間距 */
+    vertical-align: middle;
+    color: #333; /* 預設顏色較深，因為這是當前排序的圖標 */
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out; /* 平滑過渡效果 */
+}
+/* 用於非當前排序欄位，滑鼠移入時才顯示的 Icon */
+.sortable .sort-icon-hover {
+    display: inline-block; /* 確保佔位 */
+    width: 12px;
+    height: 12px;
+    margin-left: 5px;
+    vertical-align: middle;
+    color: #888; /* 預設顏色較淡 */
+    opacity: 0; /* 預設隱藏 */
+    transition: opacity 0.2s ease-in-out; /* 過渡效果 */
+}
+/* 滑鼠移入時，顯示非當前排序欄位的 Icon */
+.sortable:hover .sort-icon-hover {
+    opacity: 1; /* 滑鼠移入時顯示 */
+}
+/* 確保 Bootstrap Icons 的箭頭正確顯示 */
+.sortable .sort-icon i,
+.sortable .sort-icon-hover i {
+    font-size: 1.1em; /* 調整圖標大小 */
+    line-height: 1; /* 確保垂直對齊 */
+}
+/* 升冪排序時的箭頭 */
+.sortable.asc .sort-icon i.bi-arrow-up {
+    color: #ff9d00; /* 可以給個更明顯的顏色 */
+}
+/* 降冪排序時的箭頭 */
+.sortable.desc .sort-icon i.bi-arrow-down {
+    color: #dc35d6; /* 可以給個更明顯的顏色 */
 }

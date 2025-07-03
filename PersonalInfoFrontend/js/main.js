@@ -35,7 +35,7 @@ const app = Vue.createApp({
         phoneNumber: "",
         gender: "",
       },
-      // **新增**：用於儲存編輯表單的驗證錯誤
+      // 用於儲存編輯表單的驗證錯誤
       editErrors: {
         name: "",
         email: "",
@@ -50,6 +50,9 @@ const app = Vue.createApp({
       batchPersonsToAdd: [],
       // 儲存批量新增表單的驗證錯誤
       batchAddErrors: [], // 預計是一個陣列，每個元素對應 batchPersonsToAdd 的一個物件，包含該行所有欄位的錯誤訊息
+      currentSortBy: 'id', // 預設排序欄位，應與後端數據模型中的屬性名稱一致 (小寫)
+      currentSortOrder: 'asc', // 預設排序方式 ('asc'/'desc')
+
     };
   },
   methods: {
@@ -801,6 +804,56 @@ const app = Vue.createApp({
         this.clearMessages();
       }
     },
+    // 個人資料表格排序
+    toggleSort(columnName) {
+      // 確保欄位名稱符合預期，避免錯誤
+      const validSortColumns = ['name', 'gender', 'dateOfBirth', 'address', 'email', 'phoneNumber', 'id'];
+      if (!validSortColumns.includes(columnName)) {
+        console.warn(`不支援對欄位 '${columnName}' 進行排序。`);
+        return;
+      }
+
+      // 如果點擊的是當前排序的欄位，則切換排序方向
+      if (columnName === this.currentSortBy) {
+        this.currentSortOrder = (this.currentSortOrder === 'asc') ? 'desc' : 'asc';
+      } else {
+        // 如果點擊的是不同的欄位，則將其設為新的排序欄位，並預設為升冪
+        this.currentSortBy = columnName;
+        this.currentSortOrder = 'asc';
+      }
+    },
+    // 更新表格標頭上排序圖標的視覺效果
+    updateSortIcons() {
+      // 移除所有排序圖標的 class
+      document.querySelectorAll('.sortable').forEach(th => {
+        th.classList.remove('asc', 'desc');
+        const icon = th.querySelector('.sort-icon');
+        if (icon) {
+          icon.innerHTML = ''; // 清除箭頭
+        }
+      });
+
+      // 給當前排序的欄位添加對應的 class 和箭頭
+      // 注意：這裡使用 data-sort-by 屬性來匹配，確保 HTML 和 JS 一致
+      const currentHeader = document.querySelector(`th[data-sort-by="${this.currentSortBy}"]`);
+      if (currentHeader) {
+        currentHeader.classList.add(this.currentSortOrder);
+        const icon = currentHeader.querySelector('.sort-icon');
+        if (icon) {
+          icon.innerHTML = (this.currentSortOrder === 'asc') ? '&#9650;' : '&#9660;'; // ▲ 或 ▼
+        }
+      }
+    },
+    // 用於動態生成 tooltip 文字的方法 
+    getSortTooltip(columnName) {
+        if (columnName === this.currentSortBy) {
+            // 如果是當前排序的欄位，提示下一次點擊會切換方向
+            return this.currentSortOrder === 'asc' ? '降冪' : '升冪';
+        } else {
+            // 如果不是當前排序的欄位，提示下一次點擊會升冪排序
+            return '升冪';
+        }
+    },
 
 
   },
@@ -834,10 +887,66 @@ const app = Vue.createApp({
     canAddMoreRows() {
       return this.batchPersonsToAdd.length < this.pageSize;
     },
+    // --- 新增計算屬性：用於前端排序 ---
+    sortedPersons() {
+      // 複製一份原始數據，避免直接修改原始 persons 陣列
+      const sortablePersons = [...this.persons];
+
+      if (!this.currentSortBy) {
+        return sortablePersons; // 如果沒有指定排序欄位，返回原始數據
+      }
+
+      // 根據 currentSortBy 和 currentSortOrder 進行排序
+      sortablePersons.sort((a, b) => {
+        let valA = a[this.currentSortBy];
+        let valB = b[this.currentSortBy];
+
+        // 將 null/undefined/空字串視為排序的末尾或開頭
+        const isValANullish = (valA === null || valA === undefined || valA === '');
+        const isValBNullish = (valB === null || valB === undefined || valB === '');
+        if (isValANullish && isValBNullish) {
+            return 0; // 兩者都為空，視為相等
+        }
+        if (isValANullish) {
+            return this.currentSortOrder === 'asc' ? 1 : -1; // A 為空，B 不為空，A 靠後
+        }
+        if (isValBNullish) {
+            return this.currentSortOrder === 'asc' ? -1 : 1; // B 為空，A 不為空，B 靠後
+        }
+
+        let comparison = 0;
+
+        // 處理日期類型
+        if (this.currentSortBy === 'dateOfBirth') {
+          const dateA = new Date(valA);
+          const dateB = new Date(valB);
+          comparison = dateA - dateB;
+        }
+        // 處理字串類型 (姓名, Email, 地址, 電話, 性別)
+        else if (typeof valA === 'string' && typeof valB === 'string') {
+          comparison = valA.localeCompare(valB, 'zh-TW', { sensitivity: 'base' }); // 支援中文排序
+        }
+        // 處理數字類型 (例如 Id)
+        else if (typeof valA === 'number' && typeof valB === 'number') {
+          comparison = valA - valB;
+        }
+        // 其他未知類型，嘗試通用比較
+        else {
+          if (valA < valB) comparison = -1;
+          else if (valA > valB) comparison = 1;
+        }
+
+        return this.currentSortOrder === 'asc' ? comparison : -comparison;
+      });
+
+      return sortablePersons;
+    },
+
   },
   // 在組件掛載後立即調用 fetchPersons 方法
   mounted() {
     this.fetchPersons();
+    
     console.log("前端 Vue.js 應用程式已掛載，並嘗試加載資料。");
     
   },
